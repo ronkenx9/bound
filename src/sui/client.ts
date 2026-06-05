@@ -3,12 +3,13 @@ import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { Transaction } from "@mysten/sui/transactions";
 import { getOptionalConfig, getRuntimeConfig } from "../config.js";
 
-function makeThrottledFetch(maxPerSecond: number): typeof fetch {
+/** Serializes calls to at most `maxPerSecond`. Returns a gate to await before each request. */
+function makeThrottleGate(maxPerSecond: number): () => Promise<void> {
   const minInterval = Math.ceil(1000 / maxPerSecond);
   let lastCall = 0;
   let queue: Promise<void> = Promise.resolve();
 
-  return (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+  return () => {
     const ticket = queue.then(async () => {
       const now = Date.now();
       const wait = minInterval - (now - lastCall);
@@ -16,26 +17,51 @@ function makeThrottledFetch(maxPerSecond: number): typeof fetch {
       lastCall = Date.now();
     });
     queue = ticket;
-    return ticket.then(() => fetch(input, init));
+    return ticket;
+  };
+}
+
+function isInfraFailureStatus(status: number): boolean {
+  return status === 429 || status === 408 || status >= 500;
+}
+
+/**
+ * A fetch that throttles and routes to `primaryUrl`, and on rate-limit / 5xx /
+ * network failure transparently retries the same JSON-RPC request against
+ * `fallbackUrl` (a public Sui fullnode). JSON-RPC application errors (e.g. 400
+ * with an error body) are returned as-is for the caller to handle.
+ */
+function makeFailoverFetch(primaryUrl: string, fallbackUrl: string, maxPerSecond: number): typeof fetch {
+  const gate = makeThrottleGate(maxPerSecond);
+
+  return async (_input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    try {
+      await gate();
+      const res = await fetch(primaryUrl, init);
+      if (res.ok || !isInfraFailureStatus(res.status)) return res;
+    } catch {
+      // network-level failure on primary — fall through to fallback
+    }
+    return fetch(fallbackUrl, init);
   };
 }
 
 function buildClient(): SuiJsonRpcClient {
   const config = getOptionalConfig();
-  const url = config.suiRpcUrl ?? getJsonRpcFullnodeUrl(config.suiNetwork);
+  const publicUrl = getJsonRpcFullnodeUrl(config.suiNetwork);
 
   if (config.suiRpcUrl && config.suiRpcApiKey) {
     return new SuiJsonRpcClient({
       network: config.suiNetwork,
       transport: new JsonRpcHTTPTransport({
-        url,
+        url: config.suiRpcUrl,
         rpc: { headers: { "x-api-key": config.suiRpcApiKey } },
-        fetch: makeThrottledFetch(2),
+        fetch: makeFailoverFetch(config.suiRpcUrl, config.suiRpcFallbackUrl ?? publicUrl, 2),
       }),
     });
   }
 
-  return new SuiJsonRpcClient({ network: config.suiNetwork, url });
+  return new SuiJsonRpcClient({ network: config.suiNetwork, url: config.suiRpcUrl ?? publicUrl });
 }
 
 export function getSigner(): Ed25519Keypair {

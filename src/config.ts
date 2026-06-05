@@ -7,6 +7,7 @@ export interface LedgerConfig {
   suiNetwork: SuiNetwork;
   suiRpcUrl: string | null;
   suiRpcApiKey: string | null;
+  suiRpcFallbackUrl: string | null;
   suiOwnerAddress: string;
   suiPrivateKey: string;
   walrusEpochs: number;
@@ -89,6 +90,7 @@ export function getOptionalConfig(): LedgerConfig {
     suiNetwork: network,
     suiRpcUrl: env("SUI_RPC_URL") ?? null,
     suiRpcApiKey: env("SUI_RPC_API_KEY") ?? null,
+    suiRpcFallbackUrl: env("SUI_RPC_FALLBACK_URL") ?? null,
     suiOwnerAddress: env("SUI_OWNER_ADDRESS") ?? "",
     suiPrivateKey: env("SUI_PRIVATE_KEY") ?? "",
     walrusEpochs,
