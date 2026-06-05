@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "http";
 import { verifyLedgerRecord, type VerifyRecordResult } from "./service.js";
 import { logger } from "../ops/logger.js";
+import { secret } from "../secrets.js";
 
 export interface VerifyHttpRequest {
   method: string;
@@ -54,7 +55,7 @@ function headerValue(headers: VerifyHttpRequest["headers"], name: string): strin
 }
 
 function isAuthorized(request: VerifyHttpRequest): boolean {
-  const authToken = request.authToken ?? env("LEDGER_VERIFY_AUTH_TOKEN") ?? null;
+  const authToken = request.authToken ?? secret("LEDGER_VERIFY_AUTH_TOKEN") ?? null;
   if (!authToken) return true;
 
   const authorization = headerValue(request.headers, "authorization");

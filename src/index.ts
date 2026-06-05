@@ -5,10 +5,11 @@ import { imessage } from "spectrum-ts/providers/imessage";
 import { handleMessage } from "./handler.js";
 import { logger } from "./ops/logger.js";
 import { checkpointMessageOffset } from "./provider-offsets.js";
+import { secret } from "./secrets.js";
 
 const app = await Spectrum({
   projectId: process.env["PHOTON_PROJECT_ID"]!,
-  projectSecret: process.env["PHOTON_PROJECT_SECRET"]!,
+  projectSecret: secret("PHOTON_PROJECT_SECRET")!,
   providers: [
     terminal.config(),
     imessage.config(),

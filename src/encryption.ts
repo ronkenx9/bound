@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { secret } from "./secrets.js";
 
 const ALGORITHM = "aes-256-gcm";
 const KEY_SALT = "ledger-walrus-salt";
@@ -43,9 +44,9 @@ function parseLegacyKeys(raw: string | undefined): Map<string, string> {
 }
 
 export function resolveDataKeyring(legacyKey: string): DataKeyring {
-  const activeKey = env("LEDGER_DATA_ENCRYPTION_KEY");
+  const activeKey = secret("LEDGER_DATA_ENCRYPTION_KEY");
   const activeKeyId = env("LEDGER_DATA_KEY_ID") ?? null;
-  const keys = parseLegacyKeys(env("LEDGER_LEGACY_DATA_KEY"));
+  const keys = parseLegacyKeys(secret("LEDGER_LEGACY_DATA_KEY"));
 
   if (activeKey || activeKeyId) {
     if (!activeKey || !activeKeyId) {

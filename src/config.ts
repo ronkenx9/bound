@@ -1,3 +1,5 @@
+import { secret } from "./secrets.js";
+
 export type SuiNetwork = "testnet" | "mainnet";
 
 export interface LedgerConfig {
@@ -89,10 +91,10 @@ export function getOptionalConfig(): LedgerConfig {
     ledgerPackageId: env("LEDGER_PACKAGE_ID") ?? "",
     suiNetwork: network,
     suiRpcUrl: env("SUI_RPC_URL") ?? null,
-    suiRpcApiKey: env("SUI_RPC_API_KEY") ?? null,
+    suiRpcApiKey: secret("SUI_RPC_API_KEY") ?? null,
     suiRpcFallbackUrl: env("SUI_RPC_FALLBACK_URL") ?? null,
     suiOwnerAddress: env("SUI_OWNER_ADDRESS") ?? "",
-    suiPrivateKey: env("SUI_PRIVATE_KEY") ?? "",
+    suiPrivateKey: secret("SUI_PRIVATE_KEY") ?? "",
     walrusEpochs,
     databasePath: env("LEDGER_DB_PATH") ?? null,
     useV2Mint: process.env["LEDGER_USE_V2_MINT"] === "true",

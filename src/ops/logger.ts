@@ -1,3 +1,5 @@
+import { secret } from "../secrets.js";
+
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
 export interface Logger {
@@ -85,8 +87,8 @@ function createWebhookAlertSink(): AlertSink | null {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        ...(env("LEDGER_ALERT_WEBHOOK_TOKEN")
-          ? { authorization: `Bearer ${env("LEDGER_ALERT_WEBHOOK_TOKEN")}` }
+        ...(secret("LEDGER_ALERT_WEBHOOK_TOKEN")
+          ? { authorization: `Bearer ${secret("LEDGER_ALERT_WEBHOOK_TOKEN")}` }
           : {}),
       },
       body: JSON.stringify({
