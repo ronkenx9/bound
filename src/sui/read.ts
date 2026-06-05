@@ -1,5 +1,5 @@
-import { getJsonRpcFullnodeUrl, SuiJsonRpcClient, type SuiObjectResponse } from "@mysten/sui/jsonRpc";
-import { getOptionalConfig } from "../config.js";
+import { type SuiObjectResponse } from "@mysten/sui/jsonRpc";
+import { buildClient } from "./client.js";
 
 export interface LedgerRecordOnChain {
   objectId: string;
@@ -16,11 +16,6 @@ export interface LedgerRecordOnChain {
   txDigest: string | null;
   linkedPolicyId: string | null;
   actionStatus: number | null;
-}
-
-function buildJsonRpcClient(): SuiJsonRpcClient {
-  const { suiNetwork } = getOptionalConfig();
-  return new SuiJsonRpcClient({ network: suiNetwork, url: getJsonRpcFullnodeUrl(suiNetwork) });
 }
 
 function sleep(ms: number): Promise<void> {
@@ -53,7 +48,7 @@ function boolField(value: unknown): boolean {
 }
 
 export async function getLedgerRecordObject(objectId: string): Promise<LedgerRecordOnChain> {
-  const client = buildJsonRpcClient();
+  const client = buildClient();
   let response: SuiObjectResponse | null = null;
   for (let attempt = 0; attempt < 6; attempt += 1) {
     response = await client.getObject({

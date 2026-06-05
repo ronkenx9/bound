@@ -12,6 +12,7 @@
     "parser:calibrate": "tsx src/parser-calibration.ts",
     "test:config": "tsx src/test-config.ts",
     "test:create-record": "tsx src/test-create-record.ts",
+    "test:digest-recovery": "tsx src/test-digest-recovery.ts",
     "test:encryption": "tsx src/test-encryption.ts",
     "test:health": "tsx src/test-health.ts",
     "test:inbound-idempotency": "tsx src/test-inbound-idempotency.ts",

@@ -46,7 +46,7 @@ function makeFailoverFetch(primaryUrl: string, fallbackUrl: string, maxPerSecond
   };
 }
 
-function buildClient(): SuiJsonRpcClient {
+export function buildClient(): SuiJsonRpcClient {
   const config = getOptionalConfig();
   const publicUrl = getJsonRpcFullnodeUrl(config.suiNetwork);
 
@@ -171,6 +171,44 @@ function isStaleObjectVersionError(err: unknown): boolean {
   return /Transaction needs to be rebuilt because object .* version .* is unavailable/i.test(message);
 }
 
+type ExecResult = Awaited<ReturnType<SuiJsonRpcClient["signAndExecuteTransaction"]>>;
+
+/**
+ * After an ambiguous submission failure (network drop, timeout, gateway error),
+ * a transaction with a known digest may still have landed on-chain. Poll for it
+ * before treating the action as failed. Returns the successful result if found,
+ * or null if the transaction is confirmed absent after the polling window.
+ */
+export interface DigestRecoverable {
+  getTransactionBlock(input: {
+    digest: string;
+    options?: { showEffects?: boolean; showObjectChanges?: boolean };
+  }): Promise<ExecResult>;
+}
+
+export async function recoverByDigest(
+  client: DigestRecoverable,
+  digest: string,
+  opts: { attempts?: number; baseIntervalMs?: number } = {},
+): Promise<ExecResult | null> {
+  const attempts = opts.attempts ?? 5;
+  const baseIntervalMs = opts.baseIntervalMs ?? 1000;
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      const tx = await client.getTransactionBlock({
+        digest,
+        options: { showEffects: true, showObjectChanges: true },
+      });
+      if (tx.effects?.status.status === "success") return tx;
+      if (tx.effects?.status.status === "failure") return null;
+    } catch {
+      // not yet indexed / not found — keep polling
+    }
+    await sleep(baseIntervalMs * (i + 1));
+  }
+  return null;
+}
+
 async function signAndExecute(buildTx: () => Transaction) {
   const client = buildClient();
   const signer = getSigner();
@@ -184,30 +222,54 @@ async function signAndExecute(buildTx: () => Transaction) {
   }
 
   for (let attempt = 0; attempt < 4; attempt += 1) {
+    // Build and sign once per attempt so the submitted bytes and the digest we
+    // recover against are identical.
+    let bytes: Uint8Array;
+    let digest: string;
+    let signature: string;
     try {
       const tx = buildTx();
+      tx.setSenderIfNotSet(signer.toSuiAddress());
       if (gasPrice !== null) {
         tx.setGasPrice(gasPrice);
         tx.setGasBudget(50_000_000);
       }
-      const result = await client.signAndExecuteTransaction({
-        signer,
-        transaction: tx,
-        options: {
-          showEffects: true,
-          showObjectChanges: true,
-        },
+      bytes = await tx.build({ client });
+      digest = await tx.getDigest({ client });
+      signature = (await signer.signTransaction(bytes)).signature;
+    } catch (err) {
+      // Failures here are pre-submission: nothing was sent, so it is always
+      // safe to retry on stale gas or surface the error otherwise.
+      lastErr = err;
+      if (isStaleObjectVersionError(err) && attempt < 3) {
+        await sleep(750 * (attempt + 1));
+        continue;
+      }
+      break;
+    }
+
+    try {
+      const result = await client.executeTransactionBlock({
+        transactionBlock: bytes,
+        signature,
+        options: { showEffects: true, showObjectChanges: true },
       });
 
       if (result.effects?.status.status !== "success") {
         throw new Error(`Transaction failed: ${result.effects?.status.error ?? result.digest}`);
       }
-
       return result;
     } catch (err) {
       lastErr = err;
-      if (!isStaleObjectVersionError(err) || attempt === 3) break;
-      await sleep(750 * (attempt + 1));
+      // The transaction was submitted; it may have executed despite this error.
+      // Confirm on-chain by digest before retrying or failing.
+      const recovered = await recoverByDigest(client, digest);
+      if (recovered) return recovered;
+      if (isStaleObjectVersionError(err) && attempt < 3) {
+        await sleep(750 * (attempt + 1));
+        continue;
+      }
+      break;
     }
   }
 
