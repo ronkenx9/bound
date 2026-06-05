@@ -1,0 +1,25 @@
+[Unit]
+Description=Ledger message worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/ledger
+EnvironmentFile=/etc/ledger/ledger.env
+ExecStartPre=/usr/bin/npm run health
+ExecStart=/usr/bin/npm start
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+KillSignal=SIGTERM
+User=ledger
+Group=ledger
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/ledger
+
+[Install]
+WantedBy=multi-user.target
