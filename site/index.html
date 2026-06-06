@@ -26,6 +26,9 @@
     --blackbox: #0B0B0A;
     --ledger-white: #F6F2EA;
     --steel: #9A9994;
+    --sky-deep: #0B1B3A;
+    --sky: #2E6FB0;
+    --gold-warm: #D9A94E;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
@@ -82,14 +85,30 @@
   .nav-links a:hover { color: var(--red); }
   @media (max-width: 820px) { .nav-links .hide { display: none; } }
 
-  /* Hero */
-  .hero { padding-top: 92px; padding-bottom: 96px; border-top: none; }
-  .hero-grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 64px; align-items: center; }
-  .hero h1 { font-size: clamp(46px, 7vw, 88px); }
-  .hero h1 .accent { color: var(--red); }
-  .hero .lede { margin: 28px 0 34px; font-size: 20px; }
+  /* Hero — full-bleed cinematic sky */
+  .hero { position: relative; border-top: none; min-height: 92vh; display: flex; align-items: center; overflow: hidden; }
+  .hero-bg { position: absolute; inset: 0; background: url('assets/hero-sky.png') center/cover no-repeat; }
+  .hero-bg::after {
+    content: ""; position: absolute; inset: 0;
+    background:
+      linear-gradient(90deg, rgba(8,16,34,0.60) 0%, rgba(8,16,34,0.28) 40%, rgba(8,16,34,0) 68%),
+      linear-gradient(180deg, rgba(8,16,34,0.22) 0%, rgba(8,16,34,0) 28%, rgba(243,238,228,0) 72%, var(--cream) 100%);
+  }
+  .hero-content { position: relative; z-index: 2; padding: 132px 0; max-width: 720px; }
+  .hero .eyebrow { color: rgba(255,255,255,0.78); }
+  .hero h1 { font-size: clamp(48px, 7.6vw, 98px); color: #fff; text-shadow: 0 2px 36px rgba(8,16,34,0.40); }
+  .hero h1 .accent { color: var(--gold-warm); }
+  .hero .lede { margin: 26px 0 34px; font-size: 20px; color: rgba(255,255,255,0.92); max-width: 560px; text-shadow: 0 1px 20px rgba(8,16,34,0.45); }
   .cta-row { display: flex; gap: 14px; flex-wrap: wrap; }
-  @media (max-width: 900px) { .hero-grid { grid-template-columns: 1fr; gap: 48px; } }
+  .hero .btn { background: #fff; color: var(--ink); border-color: #fff; }
+  .hero .btn:hover { background: var(--red); color: #fff; border-color: var(--red); }
+  .hero .btn.ghost { background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.55); }
+  .hero .btn.ghost:hover { background: #fff; color: var(--ink); border-color: #fff; }
+  .hero .chips { margin-top: 36px; }
+  .hero .chip { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.30); color: rgba(255,255,255,0.92); backdrop-filter: blur(4px); }
+  .hero .chip b { color: #fff; }
+  .hero-trail { position: absolute; right: 30px; bottom: 28px; z-index: 2; font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.82); text-shadow: 0 1px 14px rgba(8,16,34,0.5); }
+  @media (max-width: 760px) { .hero-content { padding: 104px 0; } .hero-trail { display: none; } }
 
   /* chips */
   .chips { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 38px; }
@@ -144,8 +163,8 @@
     .step + .step { border-left: 1px solid var(--rule); margin-top: -1px; }
   }
 
-  /* dark band */
-  .band { background: var(--blackbox); color: var(--ledger-white); border-top: none; }
+  /* dark band — midnight sky */
+  .band { background: linear-gradient(160deg, #0B1B3A 0%, #0B0B0A 100%); color: var(--ledger-white); border-top: none; }
   .band .eyebrow { color: var(--steel); }
   .band h2 { color: var(--ledger-white); }
   .band .accent { color: var(--red); }
@@ -212,42 +231,23 @@
 
 <!-- HERO -->
 <header class="hero">
-  <div class="wrap hero-grid">
-    <div>
-      <p class="eyebrow">The accountability layer for money in motion</p>
-      <h1 class="serif">Money moves.<br/><span class="accent">Within bounds.</span></h1>
-      <p class="lede">Bound lets humans and AI agents move money only inside owner-defined rules — and turns every action into a verifiable record. Every approval, payment, and rejection is stored and provable.</p>
-      <div class="cta-row">
-        <a href="#how" class="btn">See how it works</a>
-        <a href="#proof" class="btn ghost">View the proof</a>
-      </div>
-      <div class="chips">
-        <span class="chip">Policy: <b>Active</b></span>
-        <span class="chip">Actor: <b>Agent</b></span>
-        <span class="chip">Limit: <b>₦50,000</b></span>
-        <span class="chip" style="color:var(--green)">Status: <b style="color:var(--green)">Verified</b></span>
-      </div>
+  <div class="hero-bg"></div>
+  <div class="wrap hero-content">
+    <p class="eyebrow">The trust rail for money in motion</p>
+    <h1 class="serif">Let your agent fly.<br/>We're the <span class="accent">rail.</span></h1>
+    <p class="lede">Bound lets humans and AI agents move money boldly — set the bounds before liftoff, and every move stays on track and leaves a trail you can prove.</p>
+    <div class="cta-row">
+      <a href="#how" class="btn">See how it works</a>
+      <a href="#proof" class="btn ghost">View the proof</a>
     </div>
-
-    <!-- Evidence card -->
-    <div class="card">
-      <div class="card-head">
-        <div class="brand"><svg width="22" height="22" style="color:var(--ink)"><use href="#mark"/></svg><span class="serif" style="font-weight:600;font-size:17px">Bound</span></div>
-        <span class="id">BND&#8209;7F91&#8209;2C4A</span>
-      </div>
-      <p class="card-title">Transaction Evidence</p>
-      <div class="row"><span class="k">From</span><span class="v">Ops Agent</span></div>
-      <div class="row"><span class="k">To</span><span class="v">Emeka Fuel Supply</span></div>
-      <div class="row"><span class="k">Amount</span><span class="v">₦42,000.00</span></div>
-      <div class="row"><span class="k">Policy</span><span class="v">Fuel Vendor</span></div>
-      <div class="row"><span class="k">Status</span><span class="v"><span class="pill green">VERIFIED</span></span></div>
-      <div class="row"><span class="k">Chain</span><span class="v">Sui · Walrus</span></div>
-      <div class="trace">
-        <span class="k" style="font-family:'IBM Plex Mono';font-size:11px;letter-spacing:.1em;color:var(--gray)">HASH MATCH</span>
-        <span class="seal"><span class="ring">&#10003;</span> Verified</span>
-      </div>
+    <div class="chips">
+      <span class="chip">Policy: <b>Active</b></span>
+      <span class="chip">Actor: <b>Agent</b></span>
+      <span class="chip">Limit: <b>₦50,000</b></span>
+      <span class="chip">Status: <b>Verified</b></span>
     </div>
   </div>
+  <p class="hero-trail">Every move leaves a trail you can prove &#8599;</p>
 </header>
 
 <!-- PROBLEM -->
@@ -352,6 +352,27 @@ POST /agent/transaction
     <p class="eyebrow">Verifiable without trust</p>
     <h2 class="section-title serif">Don't take our word for it. Take the chain's.</h2>
     <p class="lede section-lead">Bound stores encrypted evidence on <a href="https://www.walrus.xyz/" class="underline-link">Walrus</a> and anchors tamper-evident records on <a href="https://sui.io/" class="underline-link">Sui</a>. Anyone can fetch the evidence, check the hash, and verify the action — no operator trust required.</p>
+
+    <div style="max-width:440px;margin:48px auto 8px">
+      <div class="card">
+        <div class="card-head">
+          <div class="brand"><svg width="22" height="22" style="color:var(--ink)"><use href="#mark"/></svg><span class="serif" style="font-weight:600;font-size:17px">Bound</span></div>
+          <span class="id">BND&#8209;7F91&#8209;2C4A</span>
+        </div>
+        <p class="card-title">Transaction Evidence</p>
+        <div class="row"><span class="k">From</span><span class="v">Ops Agent</span></div>
+        <div class="row"><span class="k">To</span><span class="v">Emeka Fuel Supply</span></div>
+        <div class="row"><span class="k">Amount</span><span class="v">₦42,000.00</span></div>
+        <div class="row"><span class="k">Policy</span><span class="v">Fuel Vendor</span></div>
+        <div class="row"><span class="k">Status</span><span class="v"><span class="pill green">VERIFIED</span></span></div>
+        <div class="row"><span class="k">Chain</span><span class="v">Sui · Walrus</span></div>
+        <div class="trace">
+          <span class="k" style="font-family:'IBM Plex Mono';font-size:11px;letter-spacing:.1em;color:var(--gray)">HASH MATCH</span>
+          <span class="seal"><span class="ring">&#10003;</span> Verified</span>
+        </div>
+      </div>
+    </div>
+
     <div class="grid-3">
       <div class="feature"><div class="n">EVIDENCE</div><h3 class="serif">Walrus</h3><p>Encrypted, content-addressed payloads. The hash is the proof.</p></div>
       <div class="feature"><div class="n">ANCHOR</div><h3 class="serif">Sui</h3><p>Records, policies, and action logs as on-chain objects.</p></div>
