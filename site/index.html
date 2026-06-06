@@ -163,6 +163,48 @@
     .step + .step { border-left: 1px solid var(--rule); margin-top: -1px; }
   }
 
+  /* how-it-works — the rail */
+  .rail { position: relative; margin-top: 64px; }
+  .rail-line { position: absolute; top: 7px; left: 12.5%; right: 12.5%; height: 2px;
+    background: repeating-linear-gradient(90deg, var(--gray) 0 7px, transparent 7px 13px); opacity: .55; }
+  .rail-runner { position: absolute; top: 2px; left: 12.5%; width: 12px; height: 12px; border-radius: 50%;
+    background: var(--gold-warm); box-shadow: 0 0 0 5px color-mix(in srgb, var(--gold-warm) 22%, transparent); }
+  @keyframes runner { 0%, 8% { left: 12.5%; } 92%, 100% { left: 87.5%; } }
+  @media (prefers-reduced-motion: no-preference) { .rail-runner { animation: runner 6.5s cubic-bezier(.5,0,.2,1) infinite; } }
+  .rail-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+  .rstep { position: relative; padding-top: 34px; text-align: left; }
+  .rdot { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 16px; height: 16px;
+    border-radius: 50%; background: var(--cream); border: 2px solid var(--ink); }
+  .rstep:last-child .rdot { border-color: var(--red); }
+  .rnum { font-family: "IBM Plex Mono", monospace; font-size: 11px; letter-spacing: .12em; color: var(--gray); }
+  .rstep h4 { font-family: "Fraunces", serif; font-weight: 500; font-size: 19px; margin: 12px 0 6px; }
+  .rstep p { font-size: 13.5px; color: var(--ink-soft); }
+  @media (max-width: 760px) {
+    .rail-grid { grid-template-columns: 1fr; gap: 0; }
+    .rstep { padding: 0 0 26px 36px; }
+    .rdot { top: 4px; left: 8px; transform: none; }
+    .rail-line { left: 15px; top: 12px; bottom: 12px; right: auto; width: 2px; height: auto;
+      background: repeating-linear-gradient(180deg, var(--gray) 0 7px, transparent 7px 13px); }
+    .rail-runner { display: none; }
+  }
+
+  /* how-it-works — the decision demo */
+  .decisions { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 60px; }
+  @media (max-width: 760px) { .decisions { grid-template-columns: 1fr; } }
+  .decision { border: 1px solid var(--rule); border-radius: 14px; overflow: hidden; background: var(--ledger-white); }
+  .intent { padding: 18px 20px; border-bottom: 1px solid var(--rule); }
+  .intent .lbl { font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--gray); }
+  .intent .msg { font-family: "IBM Plex Mono", monospace; font-size: 14px; color: var(--ink); margin-top: 6px; }
+  .checks { padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; }
+  .check { display: flex; align-items: center; gap: 10px; font-family: "IBM Plex Mono", monospace; font-size: 12.5px; color: var(--ink-soft); }
+  .check .ic { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 10px; flex: none; }
+  .check .ic.g { background: var(--green); } .check .ic.r { background: var(--red); }
+  .verdict { padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    font-family: "IBM Plex Mono", monospace; font-size: 13px; letter-spacing: .04em; }
+  .verdict.g { background: color-mix(in srgb, var(--green) 10%, transparent); color: var(--green); border-top: 1px solid color-mix(in srgb, var(--green) 30%, transparent); }
+  .verdict.r { background: color-mix(in srgb, var(--red) 9%, transparent); color: var(--red); border-top: 1px solid color-mix(in srgb, var(--red) 30%, transparent); }
+  .verdict .tag { font-weight: 500; } .verdict .sub { color: var(--gray); font-size: 11px; text-align: right; }
+
   /* dark band — midnight sky */
   .band { background: linear-gradient(160deg, #0B1B3A 0%, #0B0B0A 100%); color: var(--ledger-white); border-top: none; }
   .band .eyebrow { color: var(--steel); }
@@ -277,17 +319,40 @@
   <div class="wrap">
     <p class="eyebrow">How it works</p>
     <h2 class="section-title serif">Set the rules. Let money move.</h2>
-    <p class="lede section-lead">One loop, whether the actor is a person or an agent.</p>
-    <div class="flow">
-      <div class="step"><div class="num">01 / MESSAGE</div><h4>Intent arrives</h4><p>A financial message or agent intent is parsed into a structured record.</p></div>
-      <div class="step"><div class="num">02 / POLICY</div><h4>Bounds checked</h4><p>Cap, counterparty, category, expiry, approval threshold — all enforced before anything moves.</p></div>
-      <div class="step"><div class="num">03 / EVIDENCE</div><h4>Stored on Walrus</h4><p>The encrypted payload is stored and content-hashed as durable evidence.</p></div>
-      <div class="step"><div class="num">04 / RECORD</div><h4>Anchored on Sui</h4><p>A tamper-evident record is minted on-chain — approved, rejected, or failed.</p></div>
+    <p class="lede section-lead">Fold the bounds, launch the intent — it flies on the rail and lands as proof.</p>
+
+    <!-- A. the rail -->
+    <div class="rail">
+      <div class="rail-line"></div>
+      <div class="rail-runner"></div>
+      <div class="rail-grid">
+        <div class="rstep"><span class="rdot"></span><div class="rnum">01 / FOLD</div><h4>Set the bounds</h4><p>The owner defines the policy — cap, counterparty, category, expiry, approval threshold.</p></div>
+        <div class="rstep"><span class="rdot"></span><div class="rnum">02 / LAUNCH</div><h4>Intent arrives</h4><p>A person or agent proposes a payment. Bound parses it into a structured record.</p></div>
+        <div class="rstep"><span class="rdot"></span><div class="rnum">03 / ON THE RAIL</div><h4>Bounds enforced</h4><p>Checked against the policy before anything moves. In-policy passes; out-of-policy is refused.</p></div>
+        <div class="rstep"><span class="rdot"></span><div class="rnum">04 / TRAIL</div><h4>Proof anchored</h4><p>Encrypted evidence on Walrus, a tamper-evident record on Sui — verifiable by anyone.</p></div>
+      </div>
     </div>
-    <div class="grid-3" style="margin-top:22px">
-      <div class="status"><div class="dot g">&#10003;</div><div><div class="label">APPROVED</div><div style="font-size:12px;color:var(--gray)">In policy — executed &amp; recorded</div></div></div>
-      <div class="status"><div class="dot r">&#10005;</div><div><div class="label">REJECTED</div><div style="font-size:12px;color:var(--gray)">Over cap — refused &amp; logged</div></div></div>
-      <div class="status"><div class="dot g">&#10003;</div><div><div class="label">VERIFIED</div><div style="font-size:12px;color:var(--gray)">Evidence hash matched on-chain</div></div></div>
+
+    <!-- B. the decision demo -->
+    <div class="decisions">
+      <div class="decision">
+        <div class="intent"><div class="lbl">Agent intent</div><div class="msg">pay Emeka ₦42,000 for fuel</div></div>
+        <div class="checks">
+          <div class="check"><span class="ic g">&#10003;</span> Amount ₦42,000 — under ₦50,000 cap</div>
+          <div class="check"><span class="ic g">&#10003;</span> Counterparty Emeka — allowed</div>
+          <div class="check"><span class="ic g">&#10003;</span> Policy active, within window</div>
+        </div>
+        <div class="verdict g"><span class="tag">APPROVED</span><span class="sub">executed &amp; recorded · 0x5cb1dc…</span></div>
+      </div>
+      <div class="decision">
+        <div class="intent"><div class="lbl">Agent intent</div><div class="msg">pay Emeka ₦120,000 for fuel</div></div>
+        <div class="checks">
+          <div class="check"><span class="ic r">&#10005;</span> Amount ₦120,000 — exceeds ₦50,000 cap</div>
+          <div class="check"><span class="ic g">&#10003;</span> Counterparty Emeka — allowed</div>
+          <div class="check"><span class="ic g">&#10003;</span> Policy active, within window</div>
+        </div>
+        <div class="verdict r"><span class="tag">REJECTED</span><span class="sub">refused &amp; logged · over cap</span></div>
+      </div>
     </div>
   </div>
 </section>
