@@ -100,6 +100,41 @@ curl -X POST localhost:8788/agent/transaction -H "Authorization: Bearer $TOKEN" 
 
 The response carries the on-chain action id, payment digest (if executed), and verify URL. An over-cap or out-of-policy intent comes back `rejected` with a reason and an on-chain rejection log — the agent cannot move money outside the rails.
 
+## MCP Server
+
+For LLM agents (Claude, etc.), Ledger ships as an [MCP](https://modelcontextprotocol.io) server over stdio — the agent gets Ledger as native tools and **cannot move money outside the owner's policies**. It exposes the same engine as the HTTP API:
+
+| Tool | Purpose |
+|------|---------|
+| `create_agent_policy` | Create a scoped spending policy |
+| `propose_agent_transaction` | Propose a payment; returns the policy decision |
+| `approve_agent_action` | Approve a pending action (executes payment) |
+| `reject_agent_action` | Reject a pending action |
+| `get_agent_action` | Read an action's status + audit fields |
+| `revoke_agent_policy` | Revoke a policy |
+
+Run it:
+
+```bash
+npm run start:mcp
+```
+
+Wire it into an MCP client (e.g. `claude_desktop_config.json` or `.mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "ledger": {
+      "command": "npx",
+      "args": ["tsx", "src/mcp-server.ts"],
+      "cwd": "/path/to/ledger"
+    }
+  }
+}
+```
+
+The agent proposes intents in natural language; Ledger's policy engine decides yes/no/needs-approval and writes the immutable on-chain record. Trust boundary: MCP runs over stdio, so whoever launches the process acts as the configured owner.
+
 ## Verification API
 
 ```bash

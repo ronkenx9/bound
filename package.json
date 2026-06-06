@@ -9,6 +9,7 @@
     "start": "node dist/index.js",
     "start:verify": "tsx src/verify-server.ts",
     "start:agent-api": "tsx src/agent-server.ts",
+    "start:mcp": "tsx src/mcp-server.ts",
     "health": "tsx src/health-check.ts",
     "parser:calibrate": "tsx src/parser-calibration.ts",
     "test:config": "tsx src/test-config.ts",
@@ -29,6 +30,7 @@
     "test:verify-server": "tsx src/test-verify-server.ts",
     "test:agent-safety": "tsx src/test-agent-safety.ts",
     "test:agent-server": "tsx src/test-agent-server.ts",
+    "test:mcp-server": "tsx src/test-mcp-server.ts",
     "test:e2e": "tsx src/test-e2e.ts",
     "smoke:testnet": "tsx src/smoke-testnet.ts",
     "smoke:llm-parser": "tsx src/smoke-llm-parser.ts",
@@ -44,6 +46,7 @@
     "move:test": "cd move/ledger && sui move test"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@mysten/sui": "^2.16.3",
     "@mysten/walrus": "^1.1.7",
     "@types/better-sqlite3": "^7.6.13",

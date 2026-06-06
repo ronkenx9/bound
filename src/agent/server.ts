@@ -3,37 +3,15 @@ import { logger } from "../ops/logger.js";
 import { secret } from "../secrets.js";
 import { getRuntimeConfig } from "../config.js";
 import {
-  approvePendingAgentAction,
-  createAgentPolicy,
-  evaluateAgentTransaction,
-  rejectPendingAgentAction,
-  revokePolicy,
-} from "../agent.js";
-import { getAgentActionLog, type AgentActionLog, type AgentPolicy } from "../db.js";
-import { createRecord } from "../record/creator.js";
+  createAgentOps,
+  isAgentConflict,
+  serializeAction,
+  serializePolicy,
+  type AgentOps,
+} from "./operations.js";
 
-type CreatedRecord = Awaited<ReturnType<typeof createRecord>>;
-
-/**
- * Dependency surface the HTTP handler calls into. Defaults bind to the real
- * agent engine under the configured owner address; tests inject fakes.
- */
-export interface AgentApiDeps {
-  ownerAddress: string;
-  createPolicy(input: {
-    agentId: string;
-    counterparty: string | null;
-    category: string | null;
-    maxAmount: number;
-    approvalThreshold: number | null;
-    expiresAtMs: number | null;
-  }): Promise<AgentPolicy>;
-  evaluateTransaction(input: { intent: string; agentId?: string }): Promise<{ log: AgentActionLog; record?: CreatedRecord }>;
-  approveAction(input: { actionId: string; approvedBy: string }): Promise<{ log: AgentActionLog; record?: CreatedRecord }>;
-  rejectAction(input: { actionId: string; rejectedBy: string; reason?: string }): Promise<AgentActionLog>;
-  revoke(input: { id: string }): Promise<AgentPolicy | undefined>;
-  getAction(actionId: string): AgentActionLog | undefined;
-}
+/** The HTTP handler calls into this surface; defaults bind to the real engine, tests inject fakes. */
+export type AgentApiDeps = AgentOps;
 
 export interface AgentRateLimiter {
   windowMs: number;
@@ -125,25 +103,7 @@ function checkRateLimit(request: AgentHttpRequest): { allowed: true } | { allowe
 }
 
 function defaultDeps(): AgentApiDeps {
-  const ownerAddress = getRuntimeConfig().suiOwnerAddress;
-  return {
-    ownerAddress,
-    createPolicy: input =>
-      createAgentPolicy({
-        ownerAddress,
-        agentId: input.agentId,
-        counterparty: input.counterparty,
-        category: input.category,
-        maxAmountNgn: input.maxAmount,
-        approvalThresholdNgn: input.approvalThreshold,
-        expiresAtMs: input.expiresAtMs,
-      }),
-    evaluateTransaction: input => evaluateAgentTransaction({ ownerAddress, rawText: input.intent, agentId: input.agentId }),
-    approveAction: input => approvePendingAgentAction({ ownerAddress, actionId: input.actionId, approvedBy: input.approvedBy }),
-    rejectAction: input => rejectPendingAgentAction({ ownerAddress, actionId: input.actionId, rejectedBy: input.rejectedBy, reason: input.reason }),
-    revoke: input => revokePolicy(input.id),
-    getAction: actionId => getAgentActionLog(actionId),
-  };
+  return createAgentOps(getRuntimeConfig().suiOwnerAddress);
 }
 
 function parseBody(request: AgentHttpRequest): Record<string, unknown> | null {
@@ -163,45 +123,6 @@ function str(value: unknown): string | null {
 
 function num(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
-function serializeAction(log: AgentActionLog, record?: CreatedRecord): Record<string, unknown> {
-  return {
-    actionId: log.actionId,
-    status: log.status,
-    reason: log.reason,
-    policyId: log.policyId,
-    agentId: log.agentId,
-    currency: log.currency,
-    amountNgn: log.amountNgn,
-    amountMist: log.amountMist,
-    counterparty: log.counterparty,
-    recipientAddress: log.recipientAddress,
-    paymentTxDigest: log.txDigest,
-    onChainActionId: log.onChainActionId,
-    onChainTxDigest: log.onChainTxDigest,
-    approvedBy: log.approvedBy,
-    balanceBeforeMist: log.balanceBeforeMist,
-    balanceAfterMist: log.balanceAfterMist,
-    recordObjectId: record?.objectId ?? log.reconciledRecordObjectId ?? null,
-    verifyUrl: record?.verifyUrl ?? null,
-    createdAtMs: log.createdAtMs,
-  };
-}
-
-function serializePolicy(policy: AgentPolicy): Record<string, unknown> {
-  return {
-    policyId: policy.policyId,
-    onChainPolicyId: policy.onChainPolicyId,
-    agentId: policy.agentId,
-    counterparty: policy.counterparty,
-    category: policy.category,
-    maxAmount: policy.maxAmountNgn,
-    approvalThreshold: policy.approvalThresholdNgn,
-    expiresAtMs: policy.expiresAtMs,
-    revokedAtMs: policy.revokedAtMs,
-    createdAtMs: policy.createdAtMs,
-  };
 }
 
 type Route = { method: string; pattern: RegExp };
@@ -308,11 +229,10 @@ export async function handleAgentRequest(request: AgentHttpRequest): Promise<Age
 
     return json(404, { ok: false, error: "not_found" });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
     // Client errors from the agent engine (e.g. wrong state, missing action)
     // are surfaced as 409 with the reason; unexpected failures stay generic.
-    if (/not pending_approval|No agent action found|No active policy|requires|not an executable/i.test(message)) {
-      return json(409, { ok: false, error: "conflict", detail: message });
+    if (isAgentConflict(err)) {
+      return json(409, { ok: false, error: "conflict", detail: err instanceof Error ? err.message : String(err) });
     }
     throw err;
   }
