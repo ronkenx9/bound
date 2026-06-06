@@ -1,10 +1,12 @@
-# Ledger
+# Bound
 
-Verifiable financial memory + permissioned agent wallet on Sui, powered by Walrus and Tatum.
+**The accountability layer for money in motion.** Money moves — within bounds.
 
-Ledger is a messaging-based financial record system for humans and AI agents. It listens for financial messages (bank alerts, invoices, payment instructions), parses them into structured records, stores encrypted payloads on [Walrus](https://www.walrus.xyz/), and mints tamper-evident `LedgerRecord` objects on [Sui](https://sui.io/) for auditability. All Sui RPC calls route through [Tatum](https://tatum.io/) infrastructure.
+Bound lets humans and AI agents move money only inside owner-defined rules, stores the evidence, and turns every action into a verifiable record. It listens for financial messages (bank alerts, invoices, payment instructions), parses them into structured records, stores encrypted payloads on [Walrus](https://www.walrus.xyz/), and mints tamper-evident records on [Sui](https://sui.io/) for auditability.
 
-For AI agents, Ledger adds scoped autonomy: an owner creates a spending policy, and the agent can execute payments only within that policy. Every action — approved, rejected, or failed — is recorded on-chain with a full audit trail.
+For AI agents, Bound enforces scoped autonomy: an owner creates a spending policy, and the agent can execute payments only within that policy. Every action — approved, rejected, or failed — is recorded on-chain with a full audit trail.
+
+> Note: on-chain identifiers retain the original `ledger` namespace from first deployment — the published Move module is `ledger::record` and the record object type is `LedgerRecord`. Runtime config keys use the `LEDGER_*` prefix. These are deployed/wired artifacts kept stable across the rebrand; the product and repo are **Bound**.
 
 ## How It Works
 

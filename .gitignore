@@ -6,3 +6,4 @@ move/ledger/build/
 *.db
 .DS_Store
 *.pdf
+*.zip
