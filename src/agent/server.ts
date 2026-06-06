@@ -85,6 +85,15 @@ function rateLimitKey(request: AgentHttpRequest): string {
   return request.remoteAddress ?? headerValue(request.headers, "x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
 }
 
+function pruneExpiredBuckets(nowMs: number): void {
+  // Bound memory: evict expired buckets when the map grows large, so a flood of
+  // unique client keys (or spoofed X-Forwarded-For) cannot grow it unboundedly.
+  if (rateLimitBuckets.size < 10_000) return;
+  for (const [key, bucket] of rateLimitBuckets) {
+    if (bucket.resetAtMs <= nowMs) rateLimitBuckets.delete(key);
+  }
+}
+
 function checkRateLimit(request: AgentHttpRequest): { allowed: true } | { allowed: false; retryAfterSeconds: number } {
   const limiter = request.rateLimiter === undefined ? defaultRateLimiter() : request.rateLimiter;
   if (!limiter) return { allowed: true };
@@ -92,6 +101,7 @@ function checkRateLimit(request: AgentHttpRequest): { allowed: true } | { allowe
   const key = rateLimitKey(request);
   const existing = rateLimitBuckets.get(key);
   if (!existing || existing.resetAtMs <= nowMs) {
+    pruneExpiredBuckets(nowMs);
     rateLimitBuckets.set(key, { count: 1, resetAtMs: nowMs + limiter.windowMs });
     return { allowed: true };
   }

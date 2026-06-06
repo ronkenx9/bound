@@ -1,5 +1,5 @@
 import assert from "node:assert";
-import { recoverByDigest, type DigestRecoverable } from "./sui/client.js";
+import { recoverByDigest, isPreExecutionRejection, type DigestRecoverable } from "./sui/client.js";
 
 type TxResponse = Awaited<ReturnType<DigestRecoverable["getTransactionBlock"]>>;
 
@@ -69,6 +69,13 @@ async function run() {
     assert.strictEqual(result, null, "absent tx must resolve to null");
     assert.strictEqual(calls(), 4, "should exhaust all attempts");
   }
+
+  // 5. Pre-execution rejections are classified so recovery is skipped.
+  assert(isPreExecutionRejection(new Error("Balance of gas object 123 is lower than the needed amount: 50000000")), "insufficient gas should be pre-exec");
+  assert(isPreExecutionRejection(new Error("Insufficient gas")), "InsufficientGas should be pre-exec");
+  assert(isPreExecutionRejection(new Error("No valid gas coins found for the transaction")), "no gas coins should be pre-exec");
+  assert(!isPreExecutionRejection(new Error("fetch failed")), "network error must NOT be classified as pre-exec");
+  assert(!isPreExecutionRejection(new Error("Unexpected status code: 502")), "gateway error must NOT be classified as pre-exec");
 
   console.log("Digest recovery tests passed.");
 }

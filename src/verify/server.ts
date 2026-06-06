@@ -85,6 +85,12 @@ function checkRateLimit(request: VerifyHttpRequest): { allowed: true } | { allow
   const key = rateLimitKey(request);
   const existing = rateLimitBuckets.get(key);
   if (!existing || existing.resetAtMs <= nowMs) {
+    // Bound memory: evict expired buckets when the map grows large.
+    if (rateLimitBuckets.size >= 10_000) {
+      for (const [k, b] of rateLimitBuckets) {
+        if (b.resetAtMs <= nowMs) rateLimitBuckets.delete(k);
+      }
+    }
     rateLimitBuckets.set(key, { count: 1, resetAtMs: nowMs + limiter.windowMs });
     return { allowed: true };
   }

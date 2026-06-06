@@ -92,8 +92,12 @@ export function serializePolicy(policy: AgentPolicy): Record<string, unknown> {
   };
 }
 
-/** Shared classifier: is this engine error a client-side conflict vs. an unexpected failure? */
+/**
+ * Shared classifier: is this engine error a client-side conflict / business-rule
+ * rejection (-> 409 / tool conflict) vs. an unexpected internal failure (-> 500)?
+ * Kept in sync with the throw sites in agent.ts that represent caller/state errors.
+ */
 export function isAgentConflict(err: unknown): boolean {
   const message = err instanceof Error ? err.message : String(err);
-  return /not pending_approval|No agent action found|No active policy|requires|not an executable/i.test(message);
+  return /not pending_approval|No agent action found|No active policy|requires|not an executable|has no amount to execute|exceed rolling spend window|not executed|has no payment transaction digest|already reconciled|has no on-chain policy object/i.test(message);
 }

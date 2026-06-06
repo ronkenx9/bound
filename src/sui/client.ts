@@ -50,18 +50,22 @@ export function buildClient(): SuiJsonRpcClient {
   const config = getOptionalConfig();
   const publicUrl = getJsonRpcFullnodeUrl(config.suiNetwork);
 
-  if (config.suiRpcUrl && config.suiRpcApiKey) {
-    return new SuiJsonRpcClient({
-      network: config.suiNetwork,
-      transport: new JsonRpcHTTPTransport({
-        url: config.suiRpcUrl,
-        rpc: { headers: { "x-api-key": config.suiRpcApiKey } },
-        fetch: makeFailoverFetch(config.suiRpcUrl, config.suiRpcFallbackUrl ?? publicUrl, 2),
-      }),
-    });
+  // No custom RPC: talk to the public fullnode directly (no throttle/failover needed).
+  if (!config.suiRpcUrl) {
+    return new SuiJsonRpcClient({ network: config.suiNetwork, url: publicUrl });
   }
 
-  return new SuiJsonRpcClient({ network: config.suiNetwork, url: config.suiRpcUrl ?? publicUrl });
+  // Custom RPC: throttle + transparently fail over to the fallback node on
+  // rate-limit/5xx/network errors. The API key header is added only if present,
+  // so failover works for both keyed and keyless custom endpoints.
+  return new SuiJsonRpcClient({
+    network: config.suiNetwork,
+    transport: new JsonRpcHTTPTransport({
+      url: config.suiRpcUrl,
+      ...(config.suiRpcApiKey ? { rpc: { headers: { "x-api-key": config.suiRpcApiKey } } } : {}),
+      fetch: makeFailoverFetch(config.suiRpcUrl, config.suiRpcFallbackUrl ?? publicUrl, 2),
+    }),
+  });
 }
 
 export function getSigner(): Ed25519Keypair {
@@ -171,6 +175,16 @@ function isStaleObjectVersionError(err: unknown): boolean {
   return /Transaction needs to be rebuilt because object .* version .* is unavailable/i.test(message);
 }
 
+/**
+ * True when the error proves the transaction was rejected before execution
+ * (validation / insufficient gas / dry-run abort), so it definitely did not
+ * land on-chain and there is nothing to recover by digest.
+ */
+export function isPreExecutionRejection(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return /lower than the needed amount|[Ii]nsufficient (gas|balance|coin)|GasBalanceTooLow|Balance of gas object|No valid gas coins|InsufficientGas|Could not resolve gas|ObjectNotFound|equivocat/i.test(message);
+}
+
 type ExecResult = Awaited<ReturnType<SuiJsonRpcClient["signAndExecuteTransaction"]>>;
 
 /**
@@ -261,7 +275,10 @@ async function signAndExecute(buildTx: () => Transaction) {
       return result;
     } catch (err) {
       lastErr = err;
-      // The transaction was submitted; it may have executed despite this error.
+      // If the error proves the tx never executed (insufficient gas, validation
+      // rejection), skip digest recovery — there is nothing on-chain to find.
+      if (isPreExecutionRejection(err)) break;
+      // Otherwise the tx was submitted and may have executed despite this error.
       // Confirm on-chain by digest before retrying or failing.
       const recovered = await recoverByDigest(client, digest);
       if (recovered) return recovered;

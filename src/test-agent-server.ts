@@ -164,6 +164,21 @@ async function engineConflictsBecome409() {
   }));
   assert(res.statusCode === 409, `expected 409, got ${res.statusCode}`);
   assert(JSON.parse(res.body).error === "conflict", "expected conflict error");
+
+  // Business-rule rejections from approve must also be 409, not 500.
+  const messages = [
+    "Approval would exceed rolling spend window: spent 100 MIST, requested 200 MIST, cap 250 MIST.",
+    "Pending action action_123 has no amount to execute",
+  ];
+  for (const message of messages) {
+    const r = await handleAgentRequest(authed({
+      method: "POST",
+      url: "/agent/actions/action_123/approve",
+      body: JSON.stringify({}),
+      deps: stubDeps({ approveAction: async () => { throw new Error(message); } }),
+    }));
+    assert(r.statusCode === 409, `expected 409 for "${message.slice(0, 30)}...", got ${r.statusCode}`);
+  }
 }
 
 async function rateLimitEnforced() {
