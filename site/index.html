@@ -91,14 +91,14 @@
   .hero-bg::after {
     content: ""; position: absolute; inset: 0;
     background:
-      linear-gradient(90deg, rgba(8,16,34,0.60) 0%, rgba(8,16,34,0.28) 40%, rgba(8,16,34,0) 68%),
+      linear-gradient(90deg, rgba(8,16,34,0.72) 0%, rgba(8,16,34,0.44) 42%, rgba(8,16,34,0.10) 66%, rgba(8,16,34,0) 80%),
       linear-gradient(180deg, rgba(8,16,34,0.22) 0%, rgba(8,16,34,0) 28%, rgba(243,238,228,0) 72%, var(--cream) 100%);
   }
-  .hero-content { position: relative; z-index: 2; padding: 132px 0; max-width: 720px; }
+  .hero-content { position: relative; z-index: 2; padding: 132px 0; max-width: 720px; text-align: left; }
   .hero .eyebrow { color: rgba(255,255,255,0.78); }
   .hero h1 { font-size: clamp(48px, 7.6vw, 98px); color: #fff; text-shadow: 0 2px 36px rgba(8,16,34,0.40); }
   .hero h1 .accent { color: var(--gold-warm); }
-  .hero .lede { margin: 26px 0 34px; font-size: 20px; color: rgba(255,255,255,0.92); max-width: 560px; text-shadow: 0 1px 20px rgba(8,16,34,0.45); }
+  .hero .lede { margin: 26px 0 34px; font-size: 20px; color: rgba(255,255,255,0.92); max-width: 500px; text-shadow: 0 1px 20px rgba(8,16,34,0.55); }
   .cta-row { display: flex; gap: 14px; flex-wrap: wrap; }
   .hero .btn { background: #fff; color: var(--ink); border-color: #fff; }
   .hero .btn:hover { background: var(--red); color: #fff; border-color: var(--red); }
@@ -232,7 +232,8 @@
 <!-- HERO -->
 <header class="hero">
   <div class="hero-bg"></div>
-  <div class="wrap hero-content">
+  <div class="wrap">
+   <div class="hero-content">
     <p class="eyebrow">The trust rail for money in motion</p>
     <h1 class="serif">Let your agent fly.<br/>We're the <span class="accent">rail.</span></h1>
     <p class="lede">Bound lets humans and AI agents move money boldly — set the bounds before liftoff, and every move stays on track and leaves a trail you can prove.</p>
@@ -240,12 +241,7 @@
       <a href="#how" class="btn">See how it works</a>
       <a href="#proof" class="btn ghost">View the proof</a>
     </div>
-    <div class="chips">
-      <span class="chip">Policy: <b>Active</b></span>
-      <span class="chip">Actor: <b>Agent</b></span>
-      <span class="chip">Limit: <b>₦50,000</b></span>
-      <span class="chip">Status: <b>Verified</b></span>
-    </div>
+   </div>
   </div>
   <p class="hero-trail">Every move leaves a trail you can prove &#8599;</p>
 </header>
