@@ -102,21 +102,29 @@ The response carries the on-chain action id, payment digest (if executed), and v
 
 ## MCP Server
 
-For LLM agents (Claude, etc.), Ledger ships as an [MCP](https://modelcontextprotocol.io) server over stdio — the agent gets Ledger as native tools and **cannot move money outside the owner's policies**. It exposes the same engine as the HTTP API:
+For LLM agents (Claude, etc.), Ledger ships as an [MCP](https://modelcontextprotocol.io) server over stdio — the agent gets Ledger as native tools and **cannot move money outside the owner's policies**.
 
-| Tool | Purpose |
-|------|---------|
-| `create_agent_policy` | Create a scoped spending policy |
-| `propose_agent_transaction` | Propose a payment; returns the policy decision |
-| `approve_agent_action` | Approve a pending action (executes payment) |
-| `reject_agent_action` | Reject a pending action |
-| `get_agent_action` | Read an action's status + audit fields |
-| `revoke_agent_policy` | Revoke a policy |
+### Trust tiers (`LEDGER_MCP_MODE`)
 
-Run it:
+Because the MCP signs with the owner's key, tool exposure is gated by mode:
+
+- **`agent` (default, safe):** exposes only `propose_agent_transaction` and `get_agent_action`. An agent on the other end can propose payments and read status, but **cannot create, approve, or revoke policies** — so it can never widen its own spending authority. Set `LEDGER_MCP_AGENT_ID` to pin the agent's identity so it can't impersonate another agent's policy, and `LEDGER_MCP_MIN_PROPOSAL_INTERVAL_MS` to throttle gas-costing proposals.
+- **`owner`:** exposes all six tools below. This is the **owner's** admin console — run it only as the owner, never wired to an untrusted agent.
+
+| Tool | Mode | Purpose |
+|------|------|---------|
+| `propose_agent_transaction` | agent + owner | Propose a payment; returns the policy decision |
+| `get_agent_action` | agent + owner | Read an action's status + audit fields |
+| `create_agent_policy` | owner only | Create a scoped spending policy |
+| `approve_agent_action` | owner only | Approve a pending action (executes payment) |
+| `reject_agent_action` | owner only | Reject a pending action |
+| `revoke_agent_policy` | owner only | Revoke a policy |
+
+Run it (defaults to safe agent mode):
 
 ```bash
-npm run start:mcp
+npm run start:mcp                          # agent mode
+LEDGER_MCP_MODE=owner npm run start:mcp    # owner admin console
 ```
 
 Wire it into an MCP client (e.g. `claude_desktop_config.json` or `.mcp.json`):

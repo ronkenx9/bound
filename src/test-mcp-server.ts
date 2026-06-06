@@ -1,6 +1,6 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { createLedgerMcpServer } from "./agent/mcp.js";
+import { createLedgerMcpServer, type McpServerOptions } from "./agent/mcp.js";
 import type { AgentOps } from "./agent/operations.js";
 import type { AgentActionLog, AgentPolicy } from "./db.js";
 
@@ -69,8 +69,8 @@ function stubOps(over: Partial<AgentOps> = {}): AgentOps {
   };
 }
 
-async function connect(ops: AgentOps): Promise<Client> {
-  const server = createLedgerMcpServer(ops);
+async function connect(ops: AgentOps, options: McpServerOptions = { mode: "owner" }): Promise<Client> {
+  const server = createLedgerMcpServer(ops, options);
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await server.connect(serverTransport);
   const client = new Client({ name: "test-client", version: "0.0.0" });
@@ -83,8 +83,8 @@ function parse(result: any): any {
   return JSON.parse(text);
 }
 
-async function listsAllTools() {
-  const client = await connect(stubOps());
+async function ownerModeExposesAllTools() {
+  const client = await connect(stubOps(), { mode: "owner" });
   const { tools } = await client.listTools();
   const names = tools.map(t => t.name).sort();
   const expected = [
@@ -95,10 +95,54 @@ async function listsAllTools() {
     "reject_agent_action",
     "revoke_agent_policy",
   ];
-  assert(JSON.stringify(names) === JSON.stringify(expected), `unexpected tools: ${names.join(",")}`);
-  // Each tool advertises an input schema.
+  assert(JSON.stringify(names) === JSON.stringify(expected), `unexpected owner tools: ${names.join(",")}`);
   const propose = tools.find(t => t.name === "propose_agent_transaction");
   assert(propose?.inputSchema?.properties?.intent, "expected intent in propose schema");
+  await client.close();
+}
+
+async function agentModeExposesOnlyProposeAndRead() {
+  const client = await connect(stubOps(), { mode: "agent" });
+  const { tools } = await client.listTools();
+  const names = tools.map(t => t.name).sort();
+  assert(JSON.stringify(names) === JSON.stringify(["get_agent_action", "propose_agent_transaction"]), `agent mode leaked tools: ${names.join(",")}`);
+  await client.close();
+}
+
+async function agentModeBlocksAdminTools() {
+  // create_agent_policy must be unavailable in agent mode, so an agent cannot
+  // self-grant spending authority. Calling it should be an error (unknown tool).
+  const client = await connect(stubOps({ createPolicy: async () => { throw new Error("agent must not reach createPolicy"); } }), { mode: "agent" });
+  const res: any = await client.callTool({ name: "create_agent_policy", arguments: { agentId: "x", maxAmount: 999999 } });
+  assert(res.isError === true, "expected error calling admin tool in agent mode");
+  await client.close();
+}
+
+async function agentModePinsAgentId() {
+  let seenAgentId: string | undefined = "UNSET";
+  const client = await connect(
+    stubOps({ evaluateTransaction: async ({ agentId }) => { seenAgentId = agentId; return { log: makeAction() }; } }),
+    { mode: "agent", agentId: "pinned-agent" },
+  );
+  // Even if the caller tries to pass a different agentId, it is ignored: the
+  // schema omits agentId in pinned mode and the server forces the pinned value.
+  await client.callTool({ name: "propose_agent_transaction", arguments: { intent: "pay 1 SUI to 0xabc", agentId: "attacker-agent" } as any });
+  assert(seenAgentId === "pinned-agent", `expected pinned agentId, got ${seenAgentId}`);
+  await client.close();
+}
+
+async function proposalRateLimitEnforced() {
+  let calls = 0;
+  const client = await connect(
+    stubOps({ evaluateTransaction: async () => { calls += 1; return { log: makeAction() }; } }),
+    { mode: "agent", minProposalIntervalMs: 60_000 },
+  );
+  const first = parse(await client.callTool({ name: "propose_agent_transaction", arguments: { intent: "pay 1 SUI to 0xabc" } }));
+  assert(first.ok === true, "first proposal should pass");
+  const second: any = await client.callTool({ name: "propose_agent_transaction", arguments: { intent: "pay 1 SUI to 0xabc" } });
+  const secondBody = parse(second);
+  assert(secondBody.ok === false && secondBody.error === "rate_limited", "second proposal should be rate limited");
+  assert(calls === 1, "engine should only be hit once");
   await client.close();
 }
 
@@ -176,7 +220,11 @@ async function invalidArgsRejected() {
   await client.close();
 }
 
-await listsAllTools();
+await ownerModeExposesAllTools();
+await agentModeExposesOnlyProposeAndRead();
+await agentModeBlocksAdminTools();
+await agentModePinsAgentId();
+await proposalRateLimitEnforced();
 await createPolicyTool();
 await proposeTransactionTool();
 await rejectedTransactionIsReported();

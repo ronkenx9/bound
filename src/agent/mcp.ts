@@ -9,6 +9,25 @@ import {
 
 type ToolResult = { content: { type: "text"; text: string }[]; isError?: boolean };
 
+/**
+ * Trust tiers. Over stdio the trust boundary is "whoever launched the process",
+ * and the server signs with the owner's key — so the surface must match who is
+ * on the other end:
+ *  - "agent": for an (untrusted) agent. Exposes only propose + read. The agent
+ *    cannot create/approve/revoke policies, so it can never widen its own
+ *    spending authority — it lives strictly within owner-defined policies.
+ *  - "owner": the owner's admin console. Exposes every tool. Run only by the owner.
+ */
+export type McpMode = "agent" | "owner";
+
+export interface McpServerOptions {
+  mode?: McpMode;
+  /** In agent mode, pins the agentId so a caller cannot impersonate another agent's policy. */
+  agentId?: string | null;
+  /** Min milliseconds between gas-costing proposals (each writes an on-chain audit log). */
+  minProposalIntervalMs?: number;
+}
+
 function ok(payload: Record<string, unknown>): ToolResult {
   return { content: [{ type: "text", text: JSON.stringify({ ok: true, ...payload }, null, 2) }] };
 }
@@ -31,13 +50,73 @@ async function guard(run: () => Promise<ToolResult>): Promise<ToolResult> {
 }
 
 /**
- * Builds the Ledger MCP server over the given agent engine. Exposes the same
- * policy-enforced, on-chain-audited operations as the HTTP API as MCP tools,
- * so LLM agents get Ledger as a native tool and cannot move money outside the
- * owner's policies.
+ * Builds the Ledger MCP server over the given agent engine. Tool exposure is
+ * gated by mode (see McpMode): "agent" (default) exposes only propose + read so
+ * an agent can never widen its own authority; "owner" exposes the full admin
+ * surface. The agent can never move money outside owner-defined policies.
  */
-export function createLedgerMcpServer(ops: AgentOps): McpServer {
+export function createLedgerMcpServer(ops: AgentOps, options: McpServerOptions = {}): McpServer {
+  const mode: McpMode = options.mode ?? "agent";
+  const pinnedAgentId = options.agentId ?? null;
+  const minProposalIntervalMs = options.minProposalIntervalMs ?? 0;
   const server = new McpServer({ name: "ledger", version: "0.1.0" });
+
+  // Per-process throttle on the only gas-costing agent tool: every proposal
+  // writes an on-chain audit log even when rejected, so an unbounded loop could
+  // otherwise drain the owner's gas wallet.
+  let lastProposalMs = 0;
+
+  // ---- Agent-facing tools (available in every mode) ----
+
+  server.registerTool(
+    "propose_agent_transaction",
+    {
+      title: "Propose agent transaction",
+      description:
+        "Propose a payment intent for policy evaluation. Returns the decision: approved, executed, rejected, " +
+        "or pending_approval. The agent cannot move money outside an active policy — over-cap or out-of-policy " +
+        "intents are rejected and logged on-chain.",
+      inputSchema: {
+        intent: z.string().min(1).max(2000).describe("Natural-language payment intent, e.g. 'pay Emeka 0.5 SUI to 0x.. for fuel'"),
+        ...(pinnedAgentId
+          ? {}
+          : { agentId: z.string().min(1).nullish().describe("Identifier of the proposing agent; matched against active policies") }),
+      },
+    },
+    async (args: { intent: string; agentId?: string | null }) =>
+      guard(async () => {
+        if (minProposalIntervalMs > 0) {
+          const now = Date.now();
+          if (now - lastProposalMs < minProposalIntervalMs) {
+            return fail("rate_limited", `Wait ${Math.ceil((minProposalIntervalMs - (now - lastProposalMs)) / 1000)}s before the next proposal`);
+          }
+          lastProposalMs = now;
+        }
+        const agentId = pinnedAgentId ?? args.agentId ?? undefined;
+        const { log, record } = await ops.evaluateTransaction({ intent: args.intent, agentId });
+        return ok({ action: serializeAction(log, record) });
+      }),
+  );
+
+  server.registerTool(
+    "get_agent_action",
+    {
+      title: "Get agent action",
+      description: "Read the current status and audit fields of an agent action by id.",
+      inputSchema: { actionId: z.string().min(1).describe("The action id to look up") },
+    },
+    async (args: { actionId: string }) =>
+      guard(async () => {
+        const log = ops.getAction(args.actionId);
+        if (!log) return fail("action_not_found");
+        return ok({ action: serializeAction(log) });
+      }),
+  );
+
+  // Agent mode stops here: no policy creation, approval, or revocation.
+  if (mode === "agent") return server;
+
+  // ---- Owner-only admin tools ----
 
   server.registerTool(
     "create_agent_policy",
@@ -66,26 +145,6 @@ export function createLedgerMcpServer(ops: AgentOps): McpServer {
           expiresAtMs: args.expiresAtMs ?? null,
         });
         return ok({ policy: serializePolicy(policy) });
-      }),
-  );
-
-  server.registerTool(
-    "propose_agent_transaction",
-    {
-      title: "Propose agent transaction",
-      description:
-        "Propose a payment intent for policy evaluation. Returns the decision: approved, executed, rejected, " +
-        "or pending_approval. The agent cannot move money outside an active policy — over-cap or out-of-policy " +
-        "intents are rejected and logged on-chain.",
-      inputSchema: {
-        intent: z.string().min(1).describe("Natural-language payment intent, e.g. 'pay Emeka 0.5 SUI to 0x.. for fuel'"),
-        agentId: z.string().nullish().describe("Identifier of the proposing agent; matched against active policies"),
-      },
-    },
-    async args =>
-      guard(async () => {
-        const { log, record } = await ops.evaluateTransaction({ intent: args.intent, agentId: args.agentId ?? undefined });
-        return ok({ action: serializeAction(log, record) });
       }),
   );
 
@@ -124,21 +183,6 @@ export function createLedgerMcpServer(ops: AgentOps): McpServer {
           rejectedBy: args.rejectedBy ?? "mcp",
           reason: args.reason ?? undefined,
         });
-        return ok({ action: serializeAction(log) });
-      }),
-  );
-
-  server.registerTool(
-    "get_agent_action",
-    {
-      title: "Get agent action",
-      description: "Read the current status and audit fields of an agent action by id.",
-      inputSchema: { actionId: z.string().min(1).describe("The action id to look up") },
-    },
-    async args =>
-      guard(async () => {
-        const log = ops.getAction(args.actionId);
-        if (!log) return fail("action_not_found");
         return ok({ action: serializeAction(log) });
       }),
   );
