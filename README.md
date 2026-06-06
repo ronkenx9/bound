@@ -69,6 +69,37 @@ WALRUS_PROVIDER=cli          # cli | sdk
 WALRUS_EPOCHS=3              # storage duration
 ```
 
+## Agent API
+
+A programmatic HTTP interface so AI agents can access Ledger directly (not just via messaging). Every endpoint runs the same policy-enforced, on-chain-audited engine as the message handler. Auth is **mandatory** — the server refuses to start without `LEDGER_AGENT_AUTH_TOKEN`, and fails closed (503) on any request if it's unset.
+
+```bash
+LEDGER_AGENT_AUTH_TOKEN=<token> npm run start:agent-api   # listens on :8788
+```
+
+| Method | Route | Purpose |
+|--------|-------|---------|
+| `POST` | `/agent/policy` | Create a scoped agent policy |
+| `POST` | `/agent/transaction` | Propose a payment intent; returns the policy decision (approved / executed / rejected / pending_approval) |
+| `POST` | `/agent/actions/:id/approve` | Approve a pending action (executes the payment) |
+| `POST` | `/agent/actions/:id/reject` | Reject a pending action |
+| `GET`  | `/agent/actions/:id` | Read an action's status + audit fields |
+| `POST` | `/agent/policies/:id/revoke` | Revoke a policy |
+
+All requests require `Authorization: Bearer <token>`. Example:
+
+```bash
+# Create a policy: fuel-agent can pay Emeka up to N70,000
+curl -X POST localhost:8788/agent/policy -H "Authorization: Bearer $TOKEN" \
+  -d '{"agentId":"fuel-agent","maxAmount":70000,"counterparty":"Emeka","category":"fuel"}'
+
+# Propose a payment (agent's intent in natural language)
+curl -X POST localhost:8788/agent/transaction -H "Authorization: Bearer $TOKEN" \
+  -d '{"agentId":"fuel-agent","intent":"pay Emeka N50,000 for fuel"}'
+```
+
+The response carries the on-chain action id, payment digest (if executed), and verify URL. An over-cap or out-of-policy intent comes back `rejected` with a reason and an on-chain rejection log — the agent cannot move money outside the rails.
+
 ## Verification API
 
 ```bash
