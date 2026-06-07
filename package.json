@@ -16,6 +16,7 @@
     "test:create-record": "tsx src/test-create-record.ts",
     "test:digest-recovery": "tsx src/test-digest-recovery.ts",
     "test:secrets": "tsx src/test-secrets.ts",
+    "test:memory": "tsx src/test-memory.ts",
     "test:encryption": "tsx src/test-encryption.ts",
     "test:health": "tsx src/test-health.ts",
     "test:inbound-idempotency": "tsx src/test-inbound-idempotency.ts",
