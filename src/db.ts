@@ -461,6 +461,14 @@ export function revokeAgentPolicy(agentIdOrPolicyId: string, nowMs = Date.now())
   return { ...policy, revokedAtMs: nowMs };
 }
 
+export function revokeAgentPolicyByPolicyId(policyId: string, nowMs = Date.now()): AgentPolicy | undefined {
+  const policy = findActivePolicy({ agentIdOrPolicyId: policyId, nowMs });
+  if (!policy) return undefined;
+
+  db.prepare("UPDATE agent_policies SET revokedAtMs = ? WHERE policyId = ?").run(nowMs, policy.policyId);
+  return { ...policy, revokedAtMs: nowMs };
+}
+
 export function updateAgentPolicyOnChainId(policyId: string, onChainPolicyId: string) {
   db.prepare("UPDATE agent_policies SET onChainPolicyId = ? WHERE policyId = ?").run(onChainPolicyId, policyId);
 }
@@ -471,6 +479,15 @@ export function findActivePolicy(args: {
   category?: string | null;
   nowMs?: number;
 }): AgentPolicy | undefined {
+  return findActivePolicies(args)[0];
+}
+
+export function findActivePolicies(args: {
+  agentIdOrPolicyId?: string;
+  counterparty?: string | null;
+  category?: string | null;
+  nowMs?: number;
+}): AgentPolicy[] {
   const nowMs = args.nowMs ?? Date.now();
   const policies = db.prepare(`
     SELECT * FROM agent_policies
@@ -479,7 +496,7 @@ export function findActivePolicy(args: {
     ORDER BY createdAtMs DESC
   `).all(nowMs) as AgentPolicy[];
 
-  return policies.find(policy => {
+  return policies.filter(policy => {
     if (args.agentIdOrPolicyId && policy.agentId !== args.agentIdOrPolicyId && policy.policyId !== args.agentIdOrPolicyId) {
       return false;
     }

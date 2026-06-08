@@ -2,11 +2,13 @@ import crypto from "crypto";
 import type { ParsedRecord } from "./parsing/parser.js";
 import {
   findAgentActionByIdempotencyKey,
+  findActivePolicies,
   findActivePolicy,
   getAgentActionLog,
   insertAgentActionLog,
   insertAgentPolicy,
   revokeAgentPolicy,
+  revokeAgentPolicyByPolicyId,
   sumExecutedAgentSpend,
   updateAgentActionAfterApproval,
   updateAgentActionOnChainId,
@@ -166,13 +168,23 @@ export async function createAgentPolicy(draft: AgentPolicyDraft): Promise<AgentP
 }
 
 export async function revokePolicy(agentIdOrPolicyId: string): Promise<AgentPolicy | undefined> {
-  const policy = findActivePolicy({ agentIdOrPolicyId });
-  if (!policy) return undefined;
-  if (!policy.onChainPolicyId) {
-    throw new Error(`Policy ${policy.policyId} has no on-chain policy object to revoke`);
+  const policies = findActivePolicies({ agentIdOrPolicyId });
+  if (policies.length === 0) return undefined;
+
+  const isPolicyId = policies.some(policy => policy.policyId === agentIdOrPolicyId);
+  const toRevoke = isPolicyId ? policies.filter(policy => policy.policyId === agentIdOrPolicyId) : policies;
+  const revoked: AgentPolicy[] = [];
+
+  for (const policy of toRevoke) {
+    if (!policy.onChainPolicyId) {
+      throw new Error(`Policy ${policy.policyId} has no on-chain policy object to revoke`);
+    }
+    await revokeAgentPolicyOnChain(policy.onChainPolicyId);
+    const local = revokeAgentPolicyByPolicyId(policy.policyId);
+    if (local) revoked.push(local);
   }
-  await revokeAgentPolicyOnChain(policy.onChainPolicyId);
-  return revokeAgentPolicy(agentIdOrPolicyId);
+
+  return revoked[0] ?? revokeAgentPolicy(agentIdOrPolicyId);
 }
 
 export async function evaluateAgentTransaction(args: {

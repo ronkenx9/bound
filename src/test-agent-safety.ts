@@ -224,6 +224,47 @@ async function approvalFailureRecoveryTest() {
   assert(!failed.record, "failed approval must not create a LedgerRecord");
 }
 
+async function revokeAgentRevokesAllActivePoliciesTest() {
+  process.env["LEDGER_AGENT_SPEND_WINDOW_MS"] = "86400000";
+  process.env["LEDGER_MIN_SUI_BALANCE_MIST"] = "0";
+  const { resetDbForTests } = await import("./db.js");
+  const { createAgentPolicy, evaluateAgentTransaction, revokePolicy } = await import("./agent.js");
+
+  resetDbForTests();
+  const ownerAddress = process.env["SUI_OWNER_ADDRESS"]!;
+
+  await createAgentPolicy({
+    ownerAddress,
+    agentId: "fuel-agent",
+    counterparty: "Emeka",
+    category: "fuel",
+    maxAmountNgn: 70_000,
+    approvalThresholdNgn: null,
+    expiresAtMs: Date.now() + 60_000,
+  });
+  await createAgentPolicy({
+    ownerAddress,
+    agentId: "fuel-agent",
+    counterparty: "Emeka",
+    category: "fuel",
+    maxAmountNgn: 70_000,
+    approvalThresholdNgn: null,
+    expiresAtMs: Date.now() + 60_000,
+  });
+
+  const revoked = await revokePolicy("fuel-agent");
+  assert(revoked?.revokedAtMs !== null, "expected revoke by agent id to revoke at least one policy");
+
+  const afterRevocation = await evaluateAgentTransaction({
+    ownerAddress,
+    agentId: "fuel-agent",
+    rawText: "fuel agent invoice from Emeka for N40,000 fuel",
+  });
+
+  assert(afterRevocation.log.status === "rejected", `expected no policy after revocation, got ${afterRevocation.log.status}`);
+  assert(/No active policy/.test(afterRevocation.log.reason), "expected no active policy reason");
+}
+
 async function reconciliationTest() {
   process.env["LEDGER_AGENT_SPEND_WINDOW_MS"] = "86400000";
   process.env["LEDGER_MIN_SUI_BALANCE_MIST"] = "0";
@@ -309,6 +350,7 @@ async function main() {
   await approvalThresholdTest();
   await approvalCompletionTest();
   await approvalFailureRecoveryTest();
+  await revokeAgentRevokesAllActivePoliciesTest();
   await reconciliationTest();
   console.log("Agent safety tests passed.");
 }
