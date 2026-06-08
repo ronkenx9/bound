@@ -43,6 +43,7 @@ Run these before enabling services:
 npm ci
 npm run build
 npm run health
+npm run production:check
 npm run test:config
 npm run test:encryption
 npm run test:create-record
@@ -50,8 +51,10 @@ npm run test:provider-offsets
 npm run test:sui-read
 ```
 
-`npm run health` validates required runtime config and SQLite initialization. It intentionally does not spend
-gas or write to Walrus.
+`npm run health` validates required runtime config and SQLite initialization. `npm run production:check`
+adds production-only gates for persistent storage, mock mode, v2 minting, payload encryption keys, verify
+and agent bearer tokens, alerting, MemWal credentials, Walrus provider readiness, and payment reserve. Neither
+command spends gas or writes to Walrus.
 
 ## systemd Services
 
@@ -81,7 +84,8 @@ systemctl status ledger-worker ledger-verify ledger-agent-api
 journalctl -u ledger-worker -u ledger-verify -u ledger-agent-api -f
 ```
 
-Both services run `npm run health` as `ExecStartPre`. If health fails, systemd will not start the process.
+All services run `npm run production:check` as `ExecStartPre`. If the production preflight fails, systemd
+will not start the process.
 
 ## TLS Boundary
 
@@ -105,6 +109,7 @@ After deployment:
 ```bash
 curl -fsS https://<host>/verify/<known_object_id>
 npm run health
+npm run production:check
 journalctl -u ledger-worker --since "15 minutes ago"
 journalctl -u ledger-verify --since "15 minutes ago"
 journalctl -u ledger-agent-api --since "15 minutes ago"

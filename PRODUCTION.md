@@ -10,6 +10,7 @@ Verified locally:
 ```bash
 npm run build
 npm run health
+npm run production:check
 npm run parser:calibrate
 npm run test:config
 npm run test:create-record
@@ -310,8 +311,11 @@ These must be resolved before claiming production readiness.
    error-level logs can post to `LEDGER_ALERT_WEBHOOK_URL`, a reusable retry/backoff helper exists,
    `createRecord` retries primary Walrus uploads, evidence uploads, and Sui minting, and provider/space
    high-water checkpoints are persisted in SQLite after message handlers settle. `npm run health` validates
-   runtime config and SQLite initialization without spending gas, and `deploy/systemd/` contains supervised
-   worker/verify service templates. Current
+   runtime config and SQLite initialization without spending gas; `npm run production:check` additionally
+   blocks production start when persistent storage, dedicated data keys, verify/agent auth, alerting, MemWal,
+   Walrus provider readiness, v2 minting, or SUI payment reserve are misconfigured. `deploy/systemd/`
+   contains supervised worker/verify/agent API service templates that run the production preflight before
+   start. Current
    Spectrum terminal/iMessage messages do not expose a separate replay cursor, so checkpoints use message IDs
    unless a future provider supplies `cursor`, `providerCursor`, or `checkpointCursor`. Production still
    needs those supervisor templates applied to a real host, a configured alert destination, provider-level
@@ -374,6 +378,7 @@ Current partial verifier:
 npm run verify:blob -- --blob-id=<walrus_blob_id> --hash=<sha256> [--decrypt]
 npm run verify:record -- --object-id=<sui_object_id> [--decrypt]
 npm run reconcile:agent-action -- --action-id=<executed_action_id>
+npm run production:check
 LEDGER_VERIFY_PORT=8787 npm run start:verify
 ```
 
@@ -391,7 +396,7 @@ payment transaction digest.
 
 1. Deploy the verify route behind TLS and prove `GET /verify/:objectId` against a known live object from the
    public endpoint.
-2. Apply `docs/DEPLOYMENT.md` to a real host, configure alert destination, and prove worker/verify restart
+2. Apply `docs/DEPLOYMENT.md` to a real host, pass `npm run production:check`, configure alert destination, and prove worker/verify restart
    behavior plus redacted logs.
 3. Configure managed secret storage, delegated decrypt access, and tested secret-store recovery.
 4. Decide mainnet/non-SUI payment rail scope; deploy/fund mainnet package if mainnet production is required.
