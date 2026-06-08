@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Bound — The accountability layer for money in motion</title>
-<meta name="description" content="Bound lets humans and AI agents move money only inside owner-defined rules — and turns every action into a verifiable record. Money moves. Within bounds." />
-<meta property="og:title" content="Bound — Money moves. Within bounds." />
-<meta property="og:description" content="The accountability layer for money in motion. Permissioned, explainable, revocable, verifiable financial action for humans and agents." />
+<title>Bound — Verifiable financial memory for AI agents</title>
+<meta name="description" content="Bound gives AI agents a durable, verifiable financial memory on Walrus — every payment remembered, recallable across sessions, and provable on Sui. Agents act with history, within bounds." />
+<meta property="og:title" content="Bound — Agents that remember. Money you can prove." />
+<meta property="og:description" content="Verifiable financial memory for AI agents. Remember every action, recall it across sessions, prove it on-chain. Built on Walrus + Sui." />
 <meta property="og:type" content="website" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 56 56'%3E%3Crect x='5' y='5' width='46' height='46' rx='14' fill='none' stroke='%230B0B0A' stroke-width='3.5'/%3E%3Cpath d='M14 39 C20 39 22 33 27 30 S33 23 39 23' fill='none' stroke='%230B0B0A' stroke-width='3.5' stroke-linecap='round' stroke-dasharray='6 5'/%3E%3Ccircle cx='41' cy='23' r='4.6' fill='none' stroke='%23C7352D' stroke-width='3.5'/%3E%3C/svg%3E" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -266,6 +266,7 @@
       <a href="#how" class="hide">How it works</a>
       <a href="#access" class="hide">For agents</a>
       <a href="#proof" class="hide">Proof</a>
+      <a href="#memory" class="hide">Memory</a>
       <a href="https://github.com/ronkenx9/bound" class="btn ghost" style="padding:9px 16px">GitHub</a>
     </div>
   </div>
@@ -276,39 +277,39 @@
   <div class="hero-bg"></div>
   <div class="wrap">
    <div class="hero-content">
-    <p class="eyebrow">The trust rail for money in motion</p>
-    <h1 class="serif">Let your agent fly.<br/>We're the <span class="accent">rail.</span></h1>
-    <p class="lede">Bound lets humans and AI agents move money boldly — set the bounds before liftoff, and every move stays on track and leaves a trail you can prove.</p>
+    <p class="eyebrow">Verifiable financial memory for AI agents</p>
+    <h1 class="serif">Agents that <span class="accent">remember.</span><br/>Money you can <span class="accent">prove.</span></h1>
+    <p class="lede">Bound gives your AI agent a durable, verifiable financial memory — every payment remembered, recalled across sessions, and provable on-chain. So it acts with history, within bounds.</p>
     <div class="cta-row">
       <a href="#how" class="btn">See how it works</a>
       <a href="#proof" class="btn ghost">View the proof</a>
     </div>
    </div>
   </div>
-  <p class="hero-trail">Every move leaves a trail you can prove &#8599;</p>
+  <p class="hero-trail">Every move remembered — and provable &#8599;</p>
 </header>
 
 <!-- PROBLEM -->
 <section id="problem">
   <div class="wrap">
     <p class="eyebrow">The problem</p>
-    <h2 class="section-title serif">Autonomous money needs accountability.</h2>
-    <p class="lede section-lead">Money is increasingly moved by software acting on our behalf. The controls haven't caught up.</p>
+    <h2 class="section-title serif">Agents forget. Money can't afford it.</h2>
+    <p class="lede section-lead">AI agents are stateless. They move real money, then lose the context — so every decision starts blind.</p>
     <div class="grid-3">
       <div class="feature">
         <div class="n">01</div>
-        <h3 class="serif">No clear limits</h3>
-        <p>Agents and operators can trigger payments without scoped permissions — nothing bounds what they can do.</p>
+        <h3 class="serif">No memory</h3>
+        <p>Context dies with the session. An agent can't remember what it paid, to whom, or why — so it re-decides without history and drifts or double-pays.</p>
       </div>
       <div class="feature">
         <div class="n">02</div>
-        <h3 class="serif">No reliable proof</h3>
-        <p>Financial records live in messages, screenshots, and disputed claims. "Did it happen?" has no trustless answer.</p>
+        <h3 class="serif">No proof</h3>
+        <p>What an agent did with money lives in a local log it could rewrite. "Did it happen, and was it allowed?" has no trustless answer.</p>
       </div>
       <div class="feature">
         <div class="n">03</div>
-        <h3 class="serif">No clean recourse</h3>
-        <p>When something goes wrong, there's no audit trail you can verify without trusting the operator.</p>
+        <h3 class="serif">No recall</h3>
+        <p>You can't ask an agent "have I paid this vendor before?" — memory is siloed in one app, one model, one device. Not portable, not verifiable.</p>
       </div>
     </div>
   </div>
@@ -318,18 +319,18 @@
 <section id="how">
   <div class="wrap">
     <p class="eyebrow">How it works</p>
-    <h2 class="section-title serif">Set the rules. Let money move.</h2>
-    <p class="lede section-lead">Fold the bounds, launch the intent — it flies on the rail and lands as proof.</p>
+    <h2 class="section-title serif">A loop that compounds.</h2>
+    <p class="lede section-lead">Every decision is informed by memory — and becomes memory. The agent gets sharper with each move, and never moves outside its bounds.</p>
 
-    <!-- A. the rail -->
+    <!-- A. the memory loop rail -->
     <div class="rail">
       <div class="rail-line"></div>
       <div class="rail-runner"></div>
       <div class="rail-grid">
-        <div class="rstep"><span class="rdot"></span><div class="rnum">01 / FOLD</div><h4>Set the bounds</h4><p>The owner defines the policy — cap, counterparty, category, expiry, approval threshold.</p></div>
-        <div class="rstep"><span class="rdot"></span><div class="rnum">02 / LAUNCH</div><h4>Intent arrives</h4><p>A person or agent proposes a payment. Bound parses it into a structured record.</p></div>
-        <div class="rstep"><span class="rdot"></span><div class="rnum">03 / ON THE RAIL</div><h4>Bounds enforced</h4><p>Checked against the policy before anything moves. In-policy passes; out-of-policy is refused.</p></div>
-        <div class="rstep"><span class="rdot"></span><div class="rnum">04 / TRAIL</div><h4>Proof anchored</h4><p>Encrypted evidence on Walrus, a tamper-evident record on Sui — verifiable by anyone.</p></div>
+        <div class="rstep"><span class="rdot"></span><div class="rnum">01 / RECALL</div><h4>Pull the history</h4><p>Bound recalls prior context from Walrus Memory — past payments, vendors, spend patterns — so the agent decides with history, not blind.</p></div>
+        <div class="rstep"><span class="rdot"></span><div class="rnum">02 / DECIDE</div><h4>Within bounds</h4><p>The intent is checked against the owner's policy — cap, counterparty, window. In-policy passes; out-of-policy is refused.</p></div>
+        <div class="rstep"><span class="rdot"></span><div class="rnum">03 / ACT</div><h4>Execute</h4><p>Approved payments fire on Sui. Rejected ones are logged. Nothing happens off the record.</p></div>
+        <div class="rstep"><span class="rdot"></span><div class="rnum">04 / REMEMBER</div><h4>Anchor &amp; store</h4><p>Encrypted memory on Walrus, a tamper-evident record on Sui — recallable next time, provable by anyone.</p></div>
       </div>
     </div>
 
@@ -338,20 +339,39 @@
       <div class="decision">
         <div class="intent"><div class="lbl">Agent intent</div><div class="msg">pay Emeka ₦42,000 for fuel</div></div>
         <div class="checks">
+          <div class="check"><span class="ic g">&#8635;</span> Memory: 2 prior fuel payments to Emeka (₦80,000) — within pattern</div>
           <div class="check"><span class="ic g">&#10003;</span> Amount ₦42,000 — under ₦50,000 cap</div>
           <div class="check"><span class="ic g">&#10003;</span> Counterparty Emeka — allowed</div>
-          <div class="check"><span class="ic g">&#10003;</span> Policy active, within window</div>
         </div>
-        <div class="verdict g"><span class="tag">APPROVED</span><span class="sub">executed &amp; recorded · 0x5cb1dc…</span></div>
+        <div class="verdict g"><span class="tag">APPROVED</span><span class="sub">executed &amp; remembered · 0x5cb1dc…</span></div>
       </div>
       <div class="decision">
         <div class="intent"><div class="lbl">Agent intent</div><div class="msg">pay Emeka ₦120,000 for fuel</div></div>
         <div class="checks">
+          <div class="check"><span class="ic g">&#8635;</span> Memory: already ₦80,000 to Emeka this week</div>
           <div class="check"><span class="ic r">&#10005;</span> Amount ₦120,000 — exceeds ₦50,000 cap</div>
           <div class="check"><span class="ic g">&#10003;</span> Counterparty Emeka — allowed</div>
-          <div class="check"><span class="ic g">&#10003;</span> Policy active, within window</div>
         </div>
         <div class="verdict r"><span class="tag">REJECTED</span><span class="sub">refused &amp; logged · over cap</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MEMORY (recall demo) -->
+<section id="memory">
+  <div class="wrap">
+    <p class="eyebrow">The memory layer</p>
+    <h2 class="section-title serif">Ask the agent what it remembers.</h2>
+    <p class="lede section-lead">Financial memory lives on Walrus — portable, durable, and recallable in plain language. The same memory works across sessions, tools, and runtimes.</p>
+    <div class="decisions" style="grid-template-columns:1fr;max-width:680px;margin-top:48px">
+      <div class="decision">
+        <div class="intent"><div class="lbl">Agent recall · Walrus Memory</div><div class="msg">recall("have I paid Emeka for fuel this week?")</div></div>
+        <div class="checks">
+          <div class="check"><span class="ic g">&#8635;</span> payment_out ₦42,000 to Emeka for fuel — 2 days ago — APPROVED</div>
+          <div class="check"><span class="ic g">&#8635;</span> payment_out ₦38,000 to Emeka for fuel — 5 days ago — APPROVED</div>
+        </div>
+        <div class="verdict g"><span class="tag">RECALLED</span><span class="sub">2 memories · ₦80,000 this week</span></div>
       </div>
     </div>
   </div>
@@ -361,8 +381,8 @@
 <section class="band">
   <div class="wrap">
     <p class="eyebrow">Why it matters</p>
-    <h2 class="serif" style="font-size:clamp(34px,5vw,62px);max-width:840px">The actor acts. The owner controls. <span class="accent">The chain remembers.</span></h2>
-    <p class="sub">Autonomy without accountability is a liability. Bound makes autonomy safe — every action is permissioned, explainable, revocable, and verifiable by anyone.</p>
+    <h2 class="serif" style="font-size:clamp(34px,5vw,62px);max-width:840px">An agent that remembers is an agent you can <span class="accent">trust.</span></h2>
+    <p class="sub">Autonomy without memory is brittle; memory without proof is just a log. Bound gives agents both — durable recall and on-chain proof — so every action is informed by history, bounded by policy, and verifiable by anyone.</p>
   </div>
 </section>
 
@@ -370,17 +390,17 @@
 <section>
   <div class="wrap">
     <p class="eyebrow">Built for now and next</p>
-    <h2 class="section-title serif">Same engine. Different actors. One record of truth.</h2>
+    <h2 class="section-title serif">Same memory. Different actors. One source of truth.</h2>
     <div class="grid-2">
       <div class="feature">
-        <div class="n">FOR OPERATORS &amp; SMEs</div>
-        <h3 class="serif">Books you can prove</h3>
-        <p>Run financial records straight from messages, receipts, and bank alerts. Tamper-evident books for trust with partners, lenders, and auditors — no app to adopt.</p>
+        <div class="n">FOR AI AGENTS</div>
+        <h3 class="serif">Memory + bounds</h3>
+        <p>Your agent recalls its financial history before it acts and remembers every outcome after — within a policy it can't override. It gets sharper over time without ever drifting off the rails.</p>
       </div>
       <div class="feature">
-        <div class="n">FOR AI AGENTS</div>
-        <h3 class="serif">Wallets with limits</h3>
-        <p>Give an agent a scoped policy and it can move money only within it. Over-cap or out-of-policy attempts are refused and logged. The agent can't break the rules.</p>
+        <div class="n">FOR OPERATORS &amp; SMEs</div>
+        <h3 class="serif">Books that remember</h3>
+        <p>Record money straight from messages and bank alerts. Every entry is durable, recallable, and provable — books you, your bank, or a lender can verify without trusting you.</p>
       </div>
     </div>
   </div>
@@ -394,15 +414,17 @@
     <div class="access">
       <div class="feature"><div class="n">MESSAGING</div><h3 class="serif">Spectrum</h3><p>iMessage and terminal. Meet people and agents where they already are.</p></div>
       <div class="feature"><div class="n">HTTP API</div><h3 class="serif">Any runtime</h3><p>Language-agnostic endpoints. Auth required — it moves money, so it fails closed.</p></div>
-      <div class="feature"><div class="n">MCP</div><h3 class="serif">LLM-native</h3><p>Bound as native tools. Trust-tiered: agents propose, only owners change the rules.</p></div>
+      <div class="feature"><div class="n">MCP</div><h3 class="serif">LLM-native</h3><p>Bound as native tools, incl. <span class="mono" style="font-size:12px">recall_financial_context</span>. Trust-tiered: agents recall &amp; propose, only owners change the rules.</p></div>
     </div>
     <div class="code" style="margin-top:32px">
-<span class="c"># An agent proposes — Bound's policy engine decides</span>
+<span class="c"># Recall financial memory — across sessions, on Walrus</span>
+POST /agent/recall  { <span class="k">"query"</span>: <span class="s">"payments to Emeka for fuel"</span> }
+<span class="c">→</span> { <span class="k">"memory"</span>: [ <span class="s">"₦42,000 to Emeka — 2d ago — APPROVED"</span>, … ] }
+
+<span class="c"># Propose — Bound recalls context, then decides within bounds</span>
 POST /agent/transaction
 { <span class="k">"agentId"</span>: <span class="s">"fuel-agent"</span>, <span class="k">"intent"</span>: <span class="s">"pay Emeka ₦42,000 for fuel"</span> }
-
-<span class="c">→</span> { <span class="k">"status"</span>: <span class="s">"approved"</span>, <span class="k">"recordObjectId"</span>: <span class="s">"0x5cb1dc…"</span>, <span class="k">"verifyUrl"</span>: <span class="s">"…/verify/0x5cb1dc…"</span> }
-<span class="c"># Over cap →</span> { <span class="k">"status"</span>: <span class="s">"rejected"</span>, <span class="k">"reason"</span>: <span class="s">"exceeds policy cap"</span> }
+<span class="c">→</span> { <span class="k">"status"</span>: <span class="s">"approved"</span>, <span class="k">"memory"</span>: [...], <span class="k">"verifyUrl"</span>: <span class="s">"…/verify/0x5cb1dc…"</span> }
     </div>
   </div>
 </section>
@@ -411,8 +433,8 @@ POST /agent/transaction
 <section id="proof">
   <div class="wrap">
     <p class="eyebrow">Verifiable without trust</p>
-    <h2 class="section-title serif">Don't take our word for it. Take the chain's.</h2>
-    <p class="lede section-lead">Bound stores encrypted evidence on <a href="https://www.walrus.xyz/" class="underline-link">Walrus</a> and anchors tamper-evident records on <a href="https://sui.io/" class="underline-link">Sui</a>. Anyone can fetch the evidence, check the hash, and verify the action — no operator trust required.</p>
+    <h2 class="section-title serif">Memory you don't have to take on faith.</h2>
+    <p class="lede section-lead">Every memory is an encrypted, content-addressed payload on <a href="https://www.walrus.xyz/" class="underline-link">Walrus</a>, anchored to a tamper-evident record on <a href="https://sui.io/" class="underline-link">Sui</a>. Anyone can fetch it, recompute the hash, and verify what the agent did — no operator trust required.</p>
 
     <div style="max-width:440px;margin:48px auto 8px">
       <div class="card">
@@ -435,8 +457,8 @@ POST /agent/transaction
     </div>
 
     <div class="grid-3">
-      <div class="feature"><div class="n">EVIDENCE</div><h3 class="serif">Walrus</h3><p>Encrypted, content-addressed payloads. The hash is the proof.</p></div>
-      <div class="feature"><div class="n">ANCHOR</div><h3 class="serif">Sui</h3><p>Records, policies, and action logs as on-chain objects.</p></div>
+      <div class="feature"><div class="n">MEMORY</div><h3 class="serif">Walrus</h3><p>Durable, portable, recallable memory + encrypted evidence. The hash is the proof.</p></div>
+      <div class="feature"><div class="n">ANCHOR</div><h3 class="serif">Sui</h3><p>Records, policies, and action logs as tamper-evident on-chain objects.</p></div>
       <div class="feature"><div class="n">VERIFY</div><h3 class="serif">Public route</h3><p>Fetch blob, recompute hash, compare on-chain. Match or it didn't happen.</p></div>
     </div>
   </div>
@@ -446,10 +468,10 @@ POST /agent/transaction
 <section class="final">
   <div class="wrap">
     <p class="eyebrow">Get started</p>
-    <h2 class="serif">Every action,<br/>within bounds.</h2>
+    <h2 class="serif">Give your agent<br/>a memory it can prove.</h2>
     <div class="cta-row">
       <a href="https://github.com/ronkenx9/bound" class="btn">Explore the code</a>
-      <a href="#how" class="btn ghost">See the flow</a>
+      <a href="#memory" class="btn ghost">See it recall</a>
     </div>
   </div>
 </section>
@@ -457,7 +479,7 @@ POST /agent/transaction
 <footer>
   <div class="wrap foot">
     <div class="brand"><svg width="26" height="26" style="color:var(--ink)"><use href="#mark"/></svg><span class="serif" style="font-weight:600;font-size:18px">Bound</span></div>
-    <span class="mono">Bound is a system. Proof is the standard.</span>
+    <span class="mono">Remember. Prove. Recall.</span>
     <span class="mono red">github.com/ronkenx9/bound</span>
   </div>
 </footer>
