@@ -1,12 +1,12 @@
 [Unit]
-Description=Ledger message worker
+Description=Bound message worker
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=/opt/ledger
-EnvironmentFile=/etc/ledger/ledger.env
+WorkingDirectory=/opt/bound
+EnvironmentFile=/etc/bound/bound.env
 ExecStartPre=/usr/bin/npm run health
 ExecStart=/usr/bin/npm start
 Restart=always
@@ -19,7 +19,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/var/lib/ledger
+ReadWritePaths=/var/lib/bound
 
 [Install]
 WantedBy=multi-user.target

@@ -1,6 +1,6 @@
-# Ledger Production Readiness
+# Bound Production Readiness
 
-Ledger is not production ready yet. This document is the working checklist for getting there without hiding
+Bound is not production ready yet. This document is the working checklist for getting there without hiding
 blockers.
 
 ## Current Verified State
@@ -24,6 +24,7 @@ npm run test:parser-adversarial
 npm run test:parser-calibration
 npm run test:parser-feedback
 npm run test:provider-offsets
+npm run test:sui-read
 npm run test:verify-server
 npm run test:agent-safety
 npm run test:e2e
@@ -61,15 +62,15 @@ Live payment-failure recovery smoke:
 LEDGER_MOCK=false npm run smoke:payment-failure
 ```
 
-Live OpenAI parser smoke:
+Live LLM parser smoke:
 
 ```bash
 npm run smoke:llm-parser
 ```
 
-Current result: blocked by configured `OPENAI_API_KEY`; OpenAI returned `401 invalid_api_key`. The smoke
-command now calls the OpenAI parser directly instead of falling back to deterministic parsing, and redacts
-API-key-like values from error details.
+Current result: verified through Bankr LLM Gateway (`https://llm.bankr.bot/v1`) with `deepseek-v3.2`.
+The smoke command calls the configured LLM parser directly instead of falling back to deterministic parsing,
+and redacts API-key-like values from error details.
 
 Verified live on Sui Testnet + Walrus Testnet:
 
@@ -258,32 +259,35 @@ The focused agent safety test currently covers:
 
 These must be resolved before claiming production readiness.
 
-1. **SUI payment execution is guarded on Testnet, but reconciliation needs live orphan proof.**
+1. **SUI payment execution and reconciliation are verified on Testnet, but mainnet/non-SUI rails remain undecided.**
    `LEDGER_ENABLE_PAYMENTS=true` allows approved SUI transfers after policy checks, idempotency checks,
    approval-threshold checks, rolling spend-window checks, and SUI balance reserve checks. Pending approvals
    can be approved/rejected; approved pending SUI payments execute, write a second audit action, capture
    before/after balances, and mint a LedgerRecord. Failed pre-finality executions are marked `failed` and
    logged on-chain without a payment digest or LedgerRecord. `npm run reconcile:agent-action` can mint a
-   missing LedgerRecord for an executed action with a payment digest. Production still needs live proof
-   against a real orphaned action and explicit mainnet/non-SUI payment rail decisions.
+   missing LedgerRecord for an executed action with a payment digest. Live Testnet proof now covers direct
+   SUI payment execution, approval-threshold blocking, approval execution, guarded payment failure, and a
+   controlled orphan reconciliation. Production still needs explicit mainnet deployment/funding and
+   non-SUI payment rail decisions.
 
-2. **Structured LLM parser exists, but live API evaluation is blocked by the configured OpenAI key.**
-   `LEDGER_LLM_PARSER=true` enables a structured OpenAI Responses parser using JSON Schema output and local
-   validation, with deterministic fallback when the model output is invalid or unavailable. A local
+2. **Structured LLM parser is live through an OpenAI-compatible gateway, but production traffic policy is open.**
+   `LEDGER_LLM_PARSER=true` enables a structured OpenAI-compatible chat parser with local validation and
+   deterministic fallback when the model output is invalid or unavailable. A local
    adversarial deterministic-parser corpus now covers decimal shorthand amounts, bank debit/credit alerts,
    receipt evidence, SUI recipients, and non-financial amount mentions. `npm run parser:calibrate` currently
    recommends the handler's `0.6` threshold with zero false accepts/rejects on the local calibration samples.
    Low-confidence confirmations now save confirmed records and persist parser feedback rows for calibration.
-   `npm run smoke:llm-parser` exists and is unit-tested, but the current configured key returns
-   `401 invalid_api_key`. Production still needs a valid OpenAI key with Responses API access and real
-   user-confirmation volume before trusting it for real customer messages.
+   `npm run smoke:llm-parser` is live-proven through Bankr LLM Gateway. Production still needs final traffic
+   policy: gateway/provider SLA, spending limits, fallback behavior, and real user-confirmation volume before
+   trusting it for customer messages at scale.
 
-3. **Verify surface exists, but needs deployment/TLS/UI hardening.**
+3. **Verify surface proves hashes and agent metadata, but needs deployment/TLS/UI hardening.**
    `npm run start:verify` serves `GET /verify/:objectId`, reads the Sui `LedgerRecord`, retrieves the Walrus
-   blob, and checks the stored hash without exposing decrypted financial payloads. Optional bearer auth
-   (`LEDGER_VERIFY_AUTH_TOKEN`) and per-client rate limiting (`LEDGER_VERIFY_RATE_LIMIT_*`) are available.
-   Production still needs deployment behind TLS, explorer/UI polish, and auth design for any future
-   decrypt-capable endpoint.
+   blob, checks the stored hash, and follows the companion `RecordMetadata` object to expose agent actor,
+   linked policy, payment digest, and action status without exposing decrypted financial payloads. Optional
+   bearer auth (`LEDGER_VERIFY_AUTH_TOKEN`) and per-client rate limiting (`LEDGER_VERIFY_RATE_LIMIT_*`) are
+   available. Production still needs deployment behind TLS, explorer/UI polish, and auth design for any
+   future decrypt-capable endpoint.
 
 4. **Dedicated data-encryption keys exist, but managed access operations are not complete.**
    Payloads are encrypted before Walrus upload. New payloads can use `LEDGER_DATA_KEY_ID` +
@@ -349,6 +353,8 @@ These must be resolved before claiming production readiness.
 - Rejected actions need: reason, policy evaluated, proposed transaction, and timestamp.
 - Failed actions need: reason, policy evaluated, proposed transaction, timestamp, on-chain failure audit, and
   no LedgerRecord unless a payment digest is later reconciled.
+- Revoke-by-agent must revoke all active policies for that agent; otherwise an older policy can keep
+  authorizing actions after a newer policy is revoked.
 
 ### Verification
 
@@ -356,6 +362,8 @@ These must be resolved before claiming production readiness.
   - Sui object exists and matches the expected package/module/type.
   - Walrus blob exists.
   - Blob hash matches on-chain `content_hash`.
+  - Companion `RecordMetadata` is resolved for actor type, actor id, linked policy, payment digest, and
+    action status when the record was minted through `mint_with_actor`.
   - Decryption succeeds for an authorized viewer.
   - Linked evidence blobs are present.
   - Amendments point to prior records correctly.
@@ -371,7 +379,8 @@ LEDGER_VERIFY_PORT=8787 npm run start:verify
 
 `verify:blob` verifies Walrus blob bytes against an expected SHA-256 hash and can decrypt payloads when run
 by an authorized local operator. `verify:record` reads the Sui `LedgerRecord`, extracts `walrus_blob_id` and
-`content_hash`, fetches the Walrus blob, verifies the hash, and optionally decrypts the payload.
+`content_hash`, follows the mint transaction to read companion `RecordMetadata`, fetches the Walrus blob,
+verifies the hash, and optionally decrypts the payload.
 `start:verify` exposes the same record verification as a JSON route at `/verify/:objectId`; it intentionally
 does not return decrypted plaintext. Set `LEDGER_VERIFY_AUTH_TOKEN` to require bearer auth, and configure
 `LEDGER_VERIFY_RATE_LIMIT_MAX` / `LEDGER_VERIFY_RATE_LIMIT_WINDOW_MS` for per-client throttling.
@@ -380,12 +389,14 @@ payment transaction digest.
 
 ## Next Implementation Order
 
-1. Live-test `reconcile:agent-action` against a real orphaned executed action when one exists, or add a
-   controlled live orphan smoke when the testnet wallet is refilled.
-2. Replace the invalid OpenAI key, rerun `npm run smoke:llm-parser`, and feed user-confirmation outcomes back into calibration.
-3. Deploy the verify route behind TLS and add explorer/UI polish plus auth design for any future decrypt endpoint.
-4. Apply `docs/DEPLOYMENT.md` to a real host, configure alert destination, add provider-level replay/resume integration, and broaden retry wiring around remaining external boundaries.
-5. Configure managed secret storage, delegated decrypt access, and tested secret-store recovery.
+1. Deploy the verify route behind TLS and prove `GET /verify/:objectId` against a known live object from the
+   public endpoint.
+2. Apply `docs/DEPLOYMENT.md` to a real host, configure alert destination, and prove worker/verify restart
+   behavior plus redacted logs.
+3. Configure managed secret storage, delegated decrypt access, and tested secret-store recovery.
+4. Decide mainnet/non-SUI payment rail scope; deploy/fund mainnet package if mainnet production is required.
+5. Live-test Walrus SDK writes, preferably with upload relay, before switching production from CLI writes.
+6. Feed real user-confirmation outcomes back into parser calibration.
 
 ## Move V2 Upgrade Notes
 
