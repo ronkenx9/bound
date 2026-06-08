@@ -23,13 +23,27 @@ function sleep(ms: number): Promise<void> {
 }
 
 function bytesToString(value: unknown): string {
-  if (!Array.isArray(value)) return "";
-  return Buffer.from(value as number[]).toString("utf8");
+  if (Array.isArray(value)) return Buffer.from(value as number[]).toString("utf8");
+  if (typeof value === "string") {
+    try {
+      return Buffer.from(value, "base64").toString("utf8");
+    } catch {
+      return "";
+    }
+  }
+  return "";
 }
 
 function bytesToHex(value: unknown): string {
-  if (!Array.isArray(value)) return "";
-  return Buffer.from(value as number[]).toString("hex");
+  if (Array.isArray(value)) return Buffer.from(value as number[]).toString("hex");
+  if (typeof value === "string") {
+    try {
+      return Buffer.from(value, "base64").toString("hex");
+    } catch {
+      return "";
+    }
+  }
+  return "";
 }
 
 function nestedBytesToStrings(value: unknown): string[] {
@@ -47,6 +61,52 @@ function boolField(value: unknown): boolean {
   return value === true;
 }
 
+export function parseRecordMetadataFields(fields: Record<string, unknown>): Pick<
+  LedgerRecordOnChain,
+  "actorType" | "actorId" | "txDigest" | "linkedPolicyId" | "actionStatus"
+> {
+  return {
+    actorType: fields["actor_type"] == null ? null : numberField(fields["actor_type"]),
+    actorId: fields["actor_id"] == null ? null : bytesToString(fields["actor_id"]),
+    txDigest: fields["tx_digest"] == null ? null : bytesToString(fields["tx_digest"]),
+    linkedPolicyId: fields["linked_policy_id"] == null ? null : bytesToString(fields["linked_policy_id"]),
+    actionStatus: fields["action_status"] == null ? null : numberField(fields["action_status"]),
+  };
+}
+
+async function getRecordMetadataFromMintTx(recordObjectId: string, previousTransaction?: string): Promise<ReturnType<typeof parseRecordMetadataFields> | null> {
+  if (!previousTransaction) return null;
+
+  const client = buildClient();
+  const tx = await client.getTransactionBlock({
+    digest: previousTransaction,
+    options: { showObjectChanges: true },
+  });
+  const metadataChange = tx.objectChanges?.find(change =>
+    change.type === "created" &&
+    change.objectType?.endsWith("::record::RecordMetadata") &&
+    "objectId" in change
+  );
+  const metadataObjectId = metadataChange && "objectId" in metadataChange ? metadataChange.objectId : null;
+  if (!metadataObjectId) return null;
+
+  const metadata = await client.getObject({
+    id: metadataObjectId,
+    options: {
+      showContent: true,
+      showType: true,
+    },
+  });
+  if (metadata.error || !metadata.data?.content || metadata.data.content.dataType !== "moveObject") return null;
+  if (!metadata.data.type?.endsWith("::record::RecordMetadata")) return null;
+
+  const fields = metadata.data.content.fields as Record<string, unknown>;
+  const recordId = typeof fields["record_id"] === "string" ? fields["record_id"] : "";
+  if (recordId.toLowerCase() !== recordObjectId.toLowerCase()) return null;
+
+  return parseRecordMetadataFields(fields);
+}
+
 export async function getLedgerRecordObject(objectId: string): Promise<LedgerRecordOnChain> {
   const client = buildClient();
   let response: SuiObjectResponse | null = null;
@@ -57,6 +117,7 @@ export async function getLedgerRecordObject(objectId: string): Promise<LedgerRec
         showContent: true,
         showOwner: true,
         showType: true,
+        showPreviousTransaction: true,
       },
     });
 
@@ -83,6 +144,10 @@ export async function getLedgerRecordObject(objectId: string): Promise<LedgerRec
 
   const fields = data.content.fields as Record<string, unknown>;
   const ownerValue = fields["owner"];
+  const metadata = await getRecordMetadataFromMintTx(
+    data.objectId,
+    (data as { previousTransaction?: string }).previousTransaction,
+  );
 
   return {
     objectId: data.objectId,
@@ -94,10 +159,10 @@ export async function getLedgerRecordObject(objectId: string): Promise<LedgerRec
     createdAtMs: numberField(fields["created_at_ms"]),
     evidenceBlobIds: nestedBytesToStrings(fields["evidence_blob_ids"]),
     sealed: boolField(fields["sealed"]),
-    actorType: fields["actor_type"] == null ? null : numberField(fields["actor_type"]),
-    actorId: fields["actor_id"] == null ? null : bytesToString(fields["actor_id"]),
-    txDigest: fields["tx_digest"] == null ? null : bytesToString(fields["tx_digest"]),
-    linkedPolicyId: fields["linked_policy_id"] == null ? null : bytesToString(fields["linked_policy_id"]),
-    actionStatus: fields["action_status"] == null ? null : numberField(fields["action_status"]),
+    actorType: metadata?.actorType ?? null,
+    actorId: metadata?.actorId ?? null,
+    txDigest: metadata?.txDigest ?? null,
+    linkedPolicyId: metadata?.linkedPolicyId ?? null,
+    actionStatus: metadata?.actionStatus ?? null,
   };
 }

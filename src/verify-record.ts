@@ -35,6 +35,7 @@ async function main() {
     evidenceBlobIds: record.evidenceBlobIds,
     actorType: record.actorType,
     actorId: record.actorId,
+    txDigest: record.txDigest,
     linkedPolicyId: record.linkedPolicyId,
     actionStatus: record.actionStatus,
   };

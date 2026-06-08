@@ -29,6 +29,7 @@
     "test:parser-calibration": "tsx src/test-parser-calibration.ts",
     "test:parser-feedback": "tsx src/test-parser-feedback.ts",
     "test:provider-offsets": "tsx src/test-provider-offsets.ts",
+    "test:sui-read": "tsx src/test-sui-read.ts",
     "test:verify-server": "tsx src/test-verify-server.ts",
     "test:agent-safety": "tsx src/test-agent-safety.ts",
     "test:agent-server": "tsx src/test-agent-server.ts",
