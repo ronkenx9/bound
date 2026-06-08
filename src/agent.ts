@@ -16,6 +16,7 @@ import {
 } from "./db.js";
 import { parseMessage } from "./parsing/parser.js";
 import { createRecord } from "./record/creator.js";
+import { createMemory, formatRecordMemory, type MemoryHit } from "./memory/memwal.js";
 import {
   createAgentPolicyOnChain,
   executeSuiPayment,
@@ -178,7 +179,7 @@ export async function evaluateAgentTransaction(args: {
   ownerAddress: string;
   rawText: string;
   agentId?: string;
-}): Promise<{ log: AgentActionLog; record?: Awaited<ReturnType<typeof createRecord>> }> {
+}): Promise<{ log: AgentActionLog; record?: Awaited<ReturnType<typeof createRecord>>; memoryContext?: MemoryHit[] }> {
   const parsed = await parseMessage(args.rawText);
   const config = getRuntimeConfig();
   const agentId = args.agentId ?? "ledger-agent";
@@ -202,6 +203,21 @@ export async function evaluateAgentTransaction(args: {
     counterparty: parsed.counterparty,
     category,
   });
+
+  // Recall prior financial context from Walrus Memory so the agent decides with
+  // history, not in isolation. Fails open: no memory configured -> no context.
+  const memory = createMemory();
+  let memoryContext: MemoryHit[] = [];
+  if (memory.enabled) {
+    const query = parsed.counterparty
+      ? `prior payments to ${parsed.counterparty}${category ? ` for ${category}` : ""}`
+      : args.rawText;
+    try {
+      memoryContext = await memory.recall(query, { limit: 5 });
+    } catch {
+      memoryContext = [];
+    }
+  }
 
   let status: AgentActionLog["status"] = "approved";
   let reason = "Policy matched; action approved for execution.";
@@ -328,7 +344,26 @@ export async function evaluateAgentTransaction(args: {
     });
   }
 
-  return { log, record };
+  // Remember this outcome so future decisions can recall it. Fail open.
+  if (memory.enabled) {
+    try {
+      await memory.remember(formatRecordMemory({
+        recordType: parsed.recordType,
+        amount: formatAmount(parsed),
+        counterparty: parsed.counterparty,
+        purpose: parsed.purpose,
+        actorType: "agent",
+        actorId: agentId,
+        status: status.toUpperCase(),
+        policyId: policy?.policyId ?? null,
+        objectId: record?.objectId ?? null,
+      }));
+    } catch {
+      // memory write is best-effort; never block the decision
+    }
+  }
+
+  return { log, record, memoryContext };
 }
 
 export async function approvePendingAgentAction(args: {
