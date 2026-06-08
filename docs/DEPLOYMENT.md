@@ -59,6 +59,7 @@ Templates live in:
 
 - `deploy/systemd/ledger-worker.service`
 - `deploy/systemd/ledger-verify.service`
+- `deploy/systemd/ledger-agent-api.service`
 
 Install:
 
@@ -67,27 +68,30 @@ sudo install -d -o ledger -g ledger /opt/bound /var/lib/bound
 sudo install -d -m 0750 /etc/bound
 sudo cp deploy/systemd/ledger-worker.service /etc/systemd/system/
 sudo cp deploy/systemd/ledger-verify.service /etc/systemd/system/
+sudo cp deploy/systemd/ledger-agent-api.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable ledger-worker ledger-verify
-sudo systemctl start ledger-worker ledger-verify
+sudo systemctl enable ledger-worker ledger-verify ledger-agent-api
+sudo systemctl start ledger-worker ledger-verify ledger-agent-api
 ```
 
 Check:
 
 ```bash
-systemctl status ledger-worker ledger-verify
-journalctl -u ledger-worker -u ledger-verify -f
+systemctl status ledger-worker ledger-verify ledger-agent-api
+journalctl -u ledger-worker -u ledger-verify -u ledger-agent-api -f
 ```
 
 Both services run `npm run health` as `ExecStartPre`. If health fails, systemd will not start the process.
 
 ## TLS Boundary
 
-`ledger-verify` listens on `LEDGER_VERIFY_PORT` and must sit behind a TLS reverse proxy. The proxy should:
+`ledger-verify` listens on `LEDGER_VERIFY_PORT` and must sit behind a TLS reverse proxy. `ledger-agent-api`
+listens on `LEDGER_AGENT_PORT`; expose it only to trusted agent runtimes or owner-controlled networks, with
+`LEDGER_AGENT_AUTH_TOKEN` set. The proxy should:
 
 - terminate TLS
 - enforce request body/header limits
-- forward only `/verify/:objectId`
+- forward only intended routes (`/verify/:objectId` publicly; `/agent/*` only on the private/trusted boundary)
 - preserve `X-Forwarded-For` for rate limiting
 - not expose any decrypt-capable route
 
@@ -103,6 +107,7 @@ curl -fsS https://<host>/verify/<known_object_id>
 npm run health
 journalctl -u ledger-worker --since "15 minutes ago"
 journalctl -u ledger-verify --since "15 minutes ago"
+journalctl -u ledger-agent-api --since "15 minutes ago"
 ```
 
 Confirm:
@@ -110,6 +115,7 @@ Confirm:
 - services restart after process exit
 - `LEDGER_ALERT_WEBHOOK_URL` receives error-level alerts
 - `/verify/:objectId` returns `ok: true` for a known live object
+- `/agent/recall` returns `memoryEnabled: true` when called with the agent bearer token from a trusted network
 - SQLite writes to `/var/lib/bound/bound.db`
 - no logs contain private keys, raw financial messages, decrypted payloads, or data-key material
 
