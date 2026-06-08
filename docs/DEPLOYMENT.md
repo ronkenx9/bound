@@ -44,6 +44,7 @@ npm ci
 npm run build
 npm run health
 npm run production:check
+npm run smoke:storage
 npm run smoke:secrets
 npm run smoke:alert
 npm run smoke:verify-http -- --base-url=https://<host> --object-id=<known_object_id>
@@ -58,6 +59,10 @@ npm run test:sui-read
 adds production-only gates for persistent storage, mock mode, v2 minting, payload encryption keys, verify
 and agent bearer tokens, alerting, MemWal credentials, Walrus provider readiness, and payment reserve. Neither
 command spends gas or writes to Walrus.
+
+`npm run smoke:storage` writes a marker to the configured `LEDGER_DB_PATH`, closes SQLite, reopens the same
+file, reads the marker back, and deletes it. It fails if the DB path is unset, `:memory:`, or the parent
+directory is not writable.
 
 `npm run smoke:secrets` proves required production secrets resolve through `*_CMD` commands without printing
 their values. Use `--allow-plain-env` only for local diagnostics; production should stay command-backed.
@@ -123,6 +128,7 @@ After deployment:
 curl -fsS https://<host>/verify/<known_object_id>
 npm run health
 npm run production:check
+npm run smoke:storage
 npm run smoke:secrets
 npm run smoke:alert
 npm run smoke:verify-http -- --base-url=https://<host> --object-id=<known_object_id>
@@ -134,6 +140,7 @@ journalctl -u ledger-agent-api --since "15 minutes ago"
 Confirm:
 
 - services restart after process exit
+- `npm run smoke:storage` returns `ok: true` for `/var/lib/bound/bound.db`
 - `npm run smoke:secrets` returns `ok: true` without exposing secret values
 - `LEDGER_ALERT_WEBHOOK_URL` receives error-level alerts
 - `npm run smoke:alert` returns `ok: true` from the deployed host
