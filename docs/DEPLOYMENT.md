@@ -44,6 +44,7 @@ npm ci
 npm run build
 npm run health
 npm run production:check
+npm run smoke:alert
 npm run test:config
 npm run test:encryption
 npm run test:create-record
@@ -55,6 +56,9 @@ npm run test:sui-read
 adds production-only gates for persistent storage, mock mode, v2 minting, payload encryption keys, verify
 and agent bearer tokens, alerting, MemWal credentials, Walrus provider readiness, and payment reserve. Neither
 command spends gas or writes to Walrus.
+
+`npm run smoke:alert` posts a redacted `bound_alert_probe` payload to `LEDGER_ALERT_WEBHOOK_URL` and exits
+nonzero unless the webhook returns a 2xx response. Run it only after the real alert destination is configured.
 
 ## systemd Services
 
@@ -110,6 +114,7 @@ After deployment:
 curl -fsS https://<host>/verify/<known_object_id>
 npm run health
 npm run production:check
+npm run smoke:alert
 journalctl -u ledger-worker --since "15 minutes ago"
 journalctl -u ledger-verify --since "15 minutes ago"
 journalctl -u ledger-agent-api --since "15 minutes ago"
@@ -119,6 +124,7 @@ Confirm:
 
 - services restart after process exit
 - `LEDGER_ALERT_WEBHOOK_URL` receives error-level alerts
+- `npm run smoke:alert` returns `ok: true` from the deployed host
 - `/verify/:objectId` returns `ok: true` for a known live object
 - `/agent/recall` returns `memoryEnabled: true` when called with the agent bearer token from a trusted network
 - SQLite writes to `/var/lib/bound/bound.db`
