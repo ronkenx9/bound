@@ -17,6 +17,7 @@
     "test:digest-recovery": "tsx src/test-digest-recovery.ts",
     "test:secrets": "tsx src/test-secrets.ts",
     "test:memory": "tsx src/test-memory.ts",
+    "memory:smoke": "tsx src/memory-smoke.ts",
     "test:encryption": "tsx src/test-encryption.ts",
     "test:health": "tsx src/test-health.ts",
     "test:inbound-idempotency": "tsx src/test-inbound-idempotency.ts",
@@ -48,6 +49,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "@mysten-incubation/memwal": "^0.0.7",
     "@mysten/sui": "^2.16.3",
     "@mysten/walrus": "^1.1.7",
     "@types/better-sqlite3": "^7.6.13",

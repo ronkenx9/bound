@@ -46,11 +46,12 @@ interface MemWalConfig {
 }
 
 function readConfig(): MemWalConfig | null {
-  const key = secret("MEMWAL_KEY");
+  // Match MemWal's own naming (MEMWAL_PRIVATE_KEY), with MEMWAL_KEY as a fallback.
+  const key = secret("MEMWAL_PRIVATE_KEY") ?? secret("MEMWAL_KEY");
   const accountId = process.env["MEMWAL_ACCOUNT_ID"]?.trim();
-  const serverUrl = process.env["MEMWAL_SERVER_URL"]?.trim();
+  const serverUrl = process.env["MEMWAL_SERVER_URL"]?.trim() || "https://relayer.memory.walrus.xyz";
   const namespace = process.env["MEMWAL_NAMESPACE"]?.trim() || "bound";
-  if (!key || !accountId || !serverUrl) return null;
+  if (!key || !accountId) return null;
   return { key, accountId, serverUrl, namespace };
 }
 
