@@ -22,6 +22,7 @@ npm run test:llm-parser-smoke
 npm run test:ops
 npm run test:alert-smoke
 npm run test:production-check
+npm run test:verify-http-smoke
 npm run test:parser
 npm run test:parser-adversarial
 npm run test:parser-calibration
@@ -314,7 +315,8 @@ These must be resolved before claiming production readiness.
    `createRecord` retries primary Walrus uploads, evidence uploads, and Sui minting, and provider/space
    high-water checkpoints are persisted in SQLite after message handlers settle. `npm run smoke:alert`
    sends an awaited redacted probe to the configured alert webhook so operators can prove alert delivery
-   from the deployed host. `npm run health` validates
+   from the deployed host. `npm run smoke:verify-http` checks a deployed `/verify/:objectId` endpoint and
+   fails unless it returns `ok: true` with matching content hashes for a known object. `npm run health` validates
    runtime config and SQLite initialization without spending gas; `npm run production:check` additionally
    blocks production start when persistent storage, dedicated data keys, verify/agent auth, alerting, MemWal,
    Walrus provider readiness, v2 minting, or SUI payment reserve are misconfigured. `deploy/systemd/`
@@ -384,6 +386,7 @@ npm run verify:record -- --object-id=<sui_object_id> [--decrypt]
 npm run reconcile:agent-action -- --action-id=<executed_action_id>
 npm run production:check
 npm run smoke:alert
+npm run smoke:verify-http -- --base-url=https://<host> --object-id=<known_object_id>
 LEDGER_VERIFY_PORT=8787 npm run start:verify
 ```
 
@@ -399,8 +402,8 @@ payment transaction digest.
 
 ## Next Implementation Order
 
-1. Deploy the verify route behind TLS and prove `GET /verify/:objectId` against a known live object from the
-   public endpoint.
+1. Deploy the verify route behind TLS and pass `npm run smoke:verify-http` against a known live object from
+   the public endpoint.
 2. Apply `docs/DEPLOYMENT.md` to a real host, pass `npm run production:check`, pass `npm run smoke:alert`, and prove worker/verify restart
    behavior plus redacted logs.
 3. Configure managed secret storage, delegated decrypt access, and tested secret-store recovery.

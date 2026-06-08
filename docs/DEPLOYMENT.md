@@ -45,6 +45,7 @@ npm run build
 npm run health
 npm run production:check
 npm run smoke:alert
+npm run smoke:verify-http -- --base-url=https://<host> --object-id=<known_object_id>
 npm run test:config
 npm run test:encryption
 npm run test:create-record
@@ -59,6 +60,10 @@ command spends gas or writes to Walrus.
 
 `npm run smoke:alert` posts a redacted `bound_alert_probe` payload to `LEDGER_ALERT_WEBHOOK_URL` and exits
 nonzero unless the webhook returns a 2xx response. Run it only after the real alert destination is configured.
+
+`npm run smoke:verify-http` calls `GET /verify/:objectId` on the deployed verify origin, sends
+`LEDGER_VERIFY_AUTH_TOKEN` as bearer auth when configured, and fails unless the JSON response returns
+`ok: true` for the requested object with matching expected/actual hashes.
 
 ## systemd Services
 
@@ -115,6 +120,7 @@ curl -fsS https://<host>/verify/<known_object_id>
 npm run health
 npm run production:check
 npm run smoke:alert
+npm run smoke:verify-http -- --base-url=https://<host> --object-id=<known_object_id>
 journalctl -u ledger-worker --since "15 minutes ago"
 journalctl -u ledger-verify --since "15 minutes ago"
 journalctl -u ledger-agent-api --since "15 minutes ago"
@@ -126,6 +132,7 @@ Confirm:
 - `LEDGER_ALERT_WEBHOOK_URL` receives error-level alerts
 - `npm run smoke:alert` returns `ok: true` from the deployed host
 - `/verify/:objectId` returns `ok: true` for a known live object
+- `npm run smoke:verify-http` returns `ok: true` for the same known live object
 - `/agent/recall` returns `memoryEnabled: true` when called with the agent bearer token from a trusted network
 - SQLite writes to `/var/lib/bound/bound.db`
 - no logs contain private keys, raw financial messages, decrypted payloads, or data-key material
