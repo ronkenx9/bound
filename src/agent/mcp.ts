@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   isAgentConflict,
   serializeAction,
+  serializeMemory,
   serializePolicy,
   type AgentOps,
 } from "./operations.js";
@@ -93,8 +94,26 @@ export function createLedgerMcpServer(ops: AgentOps, options: McpServerOptions =
           lastProposalMs = now;
         }
         const agentId = pinnedAgentId ?? args.agentId ?? undefined;
-        const { log, record } = await ops.evaluateTransaction({ intent: args.intent, agentId });
-        return ok({ action: serializeAction(log, record) });
+        const { log, record, memoryContext } = await ops.evaluateTransaction({ intent: args.intent, agentId });
+        return ok({ action: serializeAction(log, record), memory: serializeMemory(memoryContext ?? []) });
+      }),
+  );
+
+  server.registerTool(
+    "recall_financial_context",
+    {
+      title: "Recall financial context",
+      description:
+        "Read-only semantic recall over Bound's Walrus Memory. Use before proposing a transaction to check prior payments, duplicates, vendor history, or spend context.",
+      inputSchema: {
+        query: z.string().min(1).max(2000).describe("Natural-language memory query, e.g. 'have I paid Emeka for fuel this week?'"),
+        limit: z.number().int().positive().max(20).nullish().describe("Maximum number of memories to return"),
+      },
+    },
+    async (args: { query: string; limit?: number | null }) =>
+      guard(async () => {
+        const hits = await ops.recall({ query: args.query, limit: args.limit ?? undefined });
+        return ok({ memoryEnabled: ops.memoryEnabled(), memory: serializeMemory(hits) });
       }),
   );
 

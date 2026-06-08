@@ -119,6 +119,16 @@ export function createMemory(opts: { client?: MemWalClient } = {}): FinancialMem
   };
 }
 
+let shared: FinancialMemory | null = null;
+/** Process-wide memory instance (reuses one relayer client). */
+export function getMemory(): FinancialMemory {
+  return (shared ??= createMemory());
+}
+/** Test-only: reset the shared instance. */
+export function resetSharedMemory(): void {
+  shared = null;
+}
+
 /** Render a financial record/decision into a compact, recall-friendly memory string. */
 export function formatRecordMemory(input: {
   recordType: string;

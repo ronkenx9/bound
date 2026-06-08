@@ -60,11 +60,17 @@ function stubOps(over: Partial<AgentOps> = {}): AgentOps {
   return {
     ownerAddress: "0xowner",
     createPolicy: async () => makePolicy(),
-    evaluateTransaction: async () => ({ log: makeAction(), record: { objectId: "0xrec", txDigest: "0xrectx", verifyUrl: "https://l/verify/0xrec" } as any }),
+    evaluateTransaction: async () => ({
+      log: makeAction(),
+      record: { objectId: "0xrec", txDigest: "0xrectx", verifyUrl: "https://l/verify/0xrec" } as any,
+      memoryContext: [{ text: "payment_out N50,000 to Emeka for fuel", score: 0.92 }],
+    }),
     approveAction: async () => ({ log: makeAction({ status: "executed", txDigest: "0xpay" }) }),
     rejectAction: async () => makeAction({ status: "rejected", reason: "operator rejected" }),
     revoke: async () => makePolicy({ revokedAtMs: 3000 }),
     getAction: () => makeAction(),
+    recall: async () => [{ text: "payment_out N50,000 to Emeka for fuel", score: 0.92 }],
+    memoryEnabled: () => true,
     ...over,
   };
 }
@@ -92,6 +98,7 @@ async function ownerModeExposesAllTools() {
     "create_agent_policy",
     "get_agent_action",
     "propose_agent_transaction",
+    "recall_financial_context",
     "reject_agent_action",
     "revoke_agent_policy",
   ];
@@ -105,7 +112,7 @@ async function agentModeExposesOnlyProposeAndRead() {
   const client = await connect(stubOps(), { mode: "agent" });
   const { tools } = await client.listTools();
   const names = tools.map(t => t.name).sort();
-  assert(JSON.stringify(names) === JSON.stringify(["get_agent_action", "propose_agent_transaction"]), `agent mode leaked tools: ${names.join(",")}`);
+  assert(JSON.stringify(names) === JSON.stringify(["get_agent_action", "propose_agent_transaction", "recall_financial_context"]), `agent mode leaked tools: ${names.join(",")}`);
   await client.close();
 }
 
@@ -162,6 +169,27 @@ async function proposeTransactionTool() {
   const body = parse(res);
   assert(body.action.status === "approved", "expected approved");
   assert(body.action.verifyUrl === "https://l/verify/0xrec", "expected verify url");
+  assert(body.memory[0].text.includes("Emeka"), "expected memory in proposal response");
+  await client.close();
+}
+
+async function recallFinancialContextTool() {
+  let seenQuery = "";
+  let seenLimit: number | undefined;
+  const client = await connect(stubOps({
+    recall: async input => {
+      seenQuery = input.query;
+      seenLimit = input.limit;
+      return [{ text: "payment_out N50,000 to Emeka for fuel", score: 0.92 }];
+    },
+  }), { mode: "agent" });
+  const res = await client.callTool({ name: "recall_financial_context", arguments: { query: "have I paid Emeka?", limit: 1 } });
+  const body = parse(res);
+  assert(body.ok === true, "expected ok");
+  assert(body.memoryEnabled === true, "expected memory enabled flag");
+  assert(body.memory[0].score === 0.92, "expected serialized score");
+  assert(seenQuery === "have I paid Emeka?", `unexpected query ${seenQuery}`);
+  assert(seenLimit === 1, `unexpected limit ${seenLimit}`);
   await client.close();
 }
 
@@ -227,6 +255,7 @@ await agentModePinsAgentId();
 await proposalRateLimitEnforced();
 await createPolicyTool();
 await proposeTransactionTool();
+await recallFinancialContextTool();
 await rejectedTransactionIsReported();
 await approveRejectGetRevoke();
 await missingResolvesCleanly();

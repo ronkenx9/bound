@@ -7,6 +7,7 @@ import {
 } from "../agent.js";
 import { getAgentActionLog, type AgentActionLog, type AgentPolicy } from "../db.js";
 import { createRecord } from "../record/creator.js";
+import { getMemory, type MemoryHit } from "../memory/memwal.js";
 
 export type CreatedRecord = Awaited<ReturnType<typeof createRecord>>;
 
@@ -25,11 +26,15 @@ export interface AgentOps {
     approvalThreshold: number | null;
     expiresAtMs: number | null;
   }): Promise<AgentPolicy>;
-  evaluateTransaction(input: { intent: string; agentId?: string }): Promise<{ log: AgentActionLog; record?: CreatedRecord }>;
+  evaluateTransaction(input: { intent: string; agentId?: string }): Promise<{ log: AgentActionLog; record?: CreatedRecord; memoryContext?: MemoryHit[] }>;
   approveAction(input: { actionId: string; approvedBy: string }): Promise<{ log: AgentActionLog; record?: CreatedRecord }>;
   rejectAction(input: { actionId: string; rejectedBy: string; reason?: string }): Promise<AgentActionLog>;
   revoke(input: { id: string }): Promise<AgentPolicy | undefined>;
   getAction(actionId: string): AgentActionLog | undefined;
+  /** Semantic recall over the financial memory (Walrus Memory). [] when not configured. */
+  recall(input: { query: string; limit?: number }): Promise<MemoryHit[]>;
+  /** Whether a real memory backend is wired. */
+  memoryEnabled(): boolean;
 }
 
 export function createAgentOps(ownerAddress: string): AgentOps {
@@ -50,7 +55,13 @@ export function createAgentOps(ownerAddress: string): AgentOps {
     rejectAction: input => rejectPendingAgentAction({ ownerAddress, actionId: input.actionId, rejectedBy: input.rejectedBy, reason: input.reason }),
     revoke: input => revokePolicy(input.id),
     getAction: actionId => getAgentActionLog(actionId),
+    recall: input => getMemory().recall(input.query, { limit: input.limit }),
+    memoryEnabled: () => getMemory().enabled,
   };
+}
+
+export function serializeMemory(hits: MemoryHit[]): Array<{ text: string; score?: number }> {
+  return hits.map(h => ({ text: h.text, ...(h.score != null ? { score: h.score } : {}) }));
 }
 
 export function serializeAction(log: AgentActionLog, record?: CreatedRecord): Record<string, unknown> {

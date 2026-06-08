@@ -6,6 +6,7 @@ import {
   createAgentOps,
   isAgentConflict,
   serializeAction,
+  serializeMemory,
   serializePolicy,
   type AgentOps,
 } from "./operations.js";
@@ -144,6 +145,7 @@ const ROUTES = {
   reject: { method: "POST", pattern: /^\/agent\/actions\/([^/]+)\/reject\/?$/ },
   getAction: { method: "GET", pattern: /^\/agent\/actions\/([^/]+)\/?$/ },
   revoke: { method: "POST", pattern: /^\/agent\/policies\/([^/]+)\/revoke\/?$/ },
+  recall: { method: "POST", pattern: /^\/agent\/recall\/?$/ },
 } satisfies Record<string, Route>;
 
 function match(route: Route, method: string, pathname: string): RegExpExecArray | null {
@@ -190,10 +192,14 @@ export async function handleAgentRequest(request: AgentHttpRequest): Promise<Age
       if (!body) return json(400, { ok: false, error: "invalid_json" });
       const intent = str(body["intent"]);
       if (!intent) return json(400, { ok: false, error: "missing_field", field: "intent" });
-      const { log, record } = await deps.evaluateTransaction({ intent, agentId: str(body["agentId"]) ?? undefined });
+      const { log, record, memoryContext } = await deps.evaluateTransaction({ intent, agentId: str(body["agentId"]) ?? undefined });
       // 200 for a resolved decision (approved/executed/rejected/pending); the
-      // status field carries the policy outcome.
-      return json(200, { ok: log.status !== "failed", action: serializeAction(log, record) });
+      // status field carries the policy outcome. memory = context recalled before deciding.
+      return json(200, {
+        ok: log.status !== "failed",
+        action: serializeAction(log, record),
+        memory: serializeMemory(memoryContext ?? []),
+      });
     }
 
     // POST /agent/actions/:id/approve
@@ -235,6 +241,16 @@ export async function handleAgentRequest(request: AgentHttpRequest): Promise<Age
       const policy = await deps.revoke({ id: decodeURIComponent(revokeMatch[1]!) });
       if (!policy) return json(404, { ok: false, error: "policy_not_found" });
       return json(200, { ok: true, policy: serializePolicy(policy) });
+    }
+
+    // POST /agent/recall
+    if (match(ROUTES.recall, method, pathname)) {
+      const body = parseBody(request);
+      if (!body) return json(400, { ok: false, error: "invalid_json" });
+      const query = str(body["query"]);
+      if (!query) return json(400, { ok: false, error: "missing_field", field: "query" });
+      const hits = await deps.recall({ query, limit: num(body["limit"]) ?? undefined });
+      return json(200, { ok: true, memoryEnabled: deps.memoryEnabled(), memory: serializeMemory(hits) });
     }
 
     return json(404, { ok: false, error: "not_found" });

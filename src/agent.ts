@@ -16,7 +16,7 @@ import {
 } from "./db.js";
 import { parseMessage } from "./parsing/parser.js";
 import { createRecord } from "./record/creator.js";
-import { createMemory, formatRecordMemory, type MemoryHit } from "./memory/memwal.js";
+import { getMemory, formatRecordMemory, type MemoryHit } from "./memory/memwal.js";
 import {
   createAgentPolicyOnChain,
   executeSuiPayment,
@@ -206,7 +206,7 @@ export async function evaluateAgentTransaction(args: {
 
   // Recall prior financial context from Walrus Memory so the agent decides with
   // history, not in isolation. Fails open: no memory configured -> no context.
-  const memory = createMemory();
+  const memory = getMemory();
   let memoryContext: MemoryHit[] = [];
   if (memory.enabled) {
     const query = parsed.counterparty

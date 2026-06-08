@@ -59,11 +59,17 @@ function stubDeps(over: Partial<AgentApiDeps> = {}): AgentApiDeps {
   return {
     ownerAddress: "0xowner",
     createPolicy: async () => makePolicy(),
-    evaluateTransaction: async () => ({ log: makeAction(), record: { objectId: "0xrec", txDigest: "0xrectx", verifyUrl: "https://l/verify/0xrec" } as any }),
+    evaluateTransaction: async () => ({
+      log: makeAction(),
+      record: { objectId: "0xrec", txDigest: "0xrectx", verifyUrl: "https://l/verify/0xrec" } as any,
+      memoryContext: [{ text: "payment_out N40,000 to Emeka for fuel", score: 0.91 }],
+    }),
     approveAction: async () => ({ log: makeAction({ status: "executed" }) }),
     rejectAction: async () => makeAction({ status: "rejected", reason: "operator rejected" }),
     revoke: async () => makePolicy({ revokedAtMs: 3000 }),
     getAction: () => makeAction(),
+    recall: async () => [{ text: "payment_out N40,000 to Emeka for fuel", score: 0.91 }],
+    memoryEnabled: () => true,
     ...over,
   };
 }
@@ -120,6 +126,7 @@ async function evaluatesTransaction() {
   assert(body.action.status === "executed", "expected executed status");
   assert(body.action.paymentTxDigest === "0xpaytx", "expected payment digest");
   assert(body.action.verifyUrl === "https://l/verify/0xrec", "expected verify url");
+  assert(body.memory[0].text.includes("Emeka"), "expected recalled memory on transaction response");
 }
 
 async function rejectionStatusIsReported() {
@@ -153,6 +160,38 @@ async function approveRejectGetAndRevoke() {
 
   const revokeMissing = await handleAgentRequest(authed({ method: "POST", url: "/agent/policies/nope/revoke", deps: stubDeps({ revoke: async () => undefined }) }));
   assert(revokeMissing.statusCode === 404, "expected 404 for missing policy");
+}
+
+async function recallsFinancialMemory() {
+  let seenQuery = "";
+  let seenLimit: number | undefined;
+  const res = await handleAgentRequest(authed({
+    method: "POST",
+    url: "/agent/recall",
+    body: JSON.stringify({ query: "have I paid Emeka for fuel?", limit: 2 }),
+    deps: stubDeps({
+      recall: async input => {
+        seenQuery = input.query;
+        seenLimit = input.limit;
+        return [{ text: "payment_out N40,000 to Emeka for fuel", score: 0.91 }];
+      },
+    }),
+  }));
+  assert(res.statusCode === 200, `expected 200, got ${res.statusCode}`);
+  const body = JSON.parse(res.body);
+  assert(body.ok === true, "expected ok");
+  assert(body.memoryEnabled === true, "expected memory enabled flag");
+  assert(body.memory[0].score === 0.91, "expected serialized score");
+  assert(seenQuery === "have I paid Emeka for fuel?", `unexpected query ${seenQuery}`);
+  assert(seenLimit === 2, `unexpected limit ${seenLimit}`);
+
+  const missing = await handleAgentRequest(authed({
+    method: "POST",
+    url: "/agent/recall",
+    body: JSON.stringify({}),
+    deps: stubDeps(),
+  }));
+  assert(missing.statusCode === 400 && JSON.parse(missing.body).field === "query", "expected missing query 400");
 }
 
 async function engineConflictsBecome409() {
@@ -201,6 +240,7 @@ await policyValidation();
 await evaluatesTransaction();
 await rejectionStatusIsReported();
 await approveRejectGetAndRevoke();
+await recallsFinancialMemory();
 await engineConflictsBecome409();
 await rateLimitEnforced();
 await unknownRouteIs404();
